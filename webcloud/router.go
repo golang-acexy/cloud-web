@@ -11,8 +11,8 @@ import (
 )
 
 type BaseRouter[T any, ID IDType] struct {
-	bizService    BaseBizService[T, ID]
-	allowedFields []string
+	bizService          BaseBizService[T, ID]
+	updateAllowedFields []string // 安全设置
 }
 
 func NewBaseRouter[T any, ID IDType](bizService BaseBizService[T, ID]) BaseRouter[T, ID] {
@@ -23,7 +23,7 @@ func NewBaseRouter[T any, ID IDType](bizService BaseBizService[T, ID]) BaseRoute
 	}
 	return BaseRouter[T, ID]{
 		bizService: bizService,
-		allowedFields: coll.SliceCollect(field, func(field string) string {
+		updateAllowedFields: coll.SliceCollect(field, func(field string) string {
 			if field == "ID" {
 				return "id"
 			}
@@ -33,8 +33,22 @@ func NewBaseRouter[T any, ID IDType](bizService BaseBizService[T, ID]) BaseRoute
 }
 
 func (b *BaseRouter[T, ID]) RegisterBaseHandler(router *ginstarter.RouterWrapper, baseRouter BaseRouter[T, ID]) {
+	router.POST1("save", []string{gin.MIMEJSON, gin.MIMEPOSTForm}, baseRouter.save())
 	router.GET("by-id/:id", baseRouter.queryById())
 	router.PUT1("by-id/:id", []string{gin.MIMEJSON}, baseRouter.updateById())
+}
+
+func (b *BaseRouter[T, ID]) save() ginstarter.HandlerWrapper {
+	return func(request *ginstarter.Request) (ginstarter.Response, error) {
+		var t T
+		request.MustBindBodyJson(&t)
+		id, err := b.bizService.Save(&t)
+		if err != nil {
+			logger.Logrus().Errorln("cant save:", t, err)
+			return nil, err
+		}
+		return ginstarter.RespRestSuccess(id), nil
+	}
 }
 
 func (b *BaseRouter[T, ID]) queryById() ginstarter.HandlerWrapper {
@@ -73,7 +87,7 @@ func (b *BaseRouter[T, ID]) updateById() ginstarter.HandlerWrapper {
 		input := coll.MapFilterToSlice(update, func(k string, v any) (string, bool) {
 			return str.CamelToSnake(k), true
 		})
-		if !coll.SliceIsSubset(input, b.allowedFields) {
+		if !coll.SliceIsSubset(input, b.updateAllowedFields) {
 			logger.Logrus().Warningln("request field not allowed: ", input)
 			return ginstarter.RespRestBadParameters(), nil
 		}

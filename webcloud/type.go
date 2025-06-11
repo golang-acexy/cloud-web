@@ -39,6 +39,10 @@ type Authority[T any] struct {
 }
 
 type BaseBizService[T any, ID IDType] interface {
+
+	// Save 保存数据
+	Save(t *T) (ID, error)
+
 	// QueryById 通过主键查询
 	QueryById(id ID, result *T) (int64, error)
 

@@ -40,5 +40,8 @@ type Authority[T any] struct {
 
 type BaseBizService[T any, ID IDType] interface {
 	// QueryById 通过主键查询
-	QueryById(id ID, result *T) int64
+	QueryById(id ID, result *T) (int64, error)
+
+	// ModifyById 通过主键修改数据
+	ModifyById(id ID, update map[string]any) (int64, error)
 }

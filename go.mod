@@ -3,8 +3,8 @@ module github.com/golang-acexy/cloud-web
 go 1.23.5
 
 require (
-	github.com/acexy/golang-toolkit v0.0.48
-	github.com/golang-acexy/starter-gin v0.1.23
+	github.com/acexy/golang-toolkit v0.0.49-0.20250611120427-6f8e7fc78179
+	github.com/golang-acexy/starter-gin v0.1.24-0.20250611110638-1f0fcda9ee08
 )
 
 require (

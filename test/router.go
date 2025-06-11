@@ -6,6 +6,8 @@ import (
 )
 
 type User struct {
+	ID        uint64 `json:"id"`
+	ClassName string `json:"class_name"`
 }
 
 type UserRouter[T User, ID uint64] struct {

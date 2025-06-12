@@ -5,35 +5,30 @@ import (
 	"github.com/golang-acexy/starter-gin/ginstarter"
 )
 
-type User struct {
-	ID        uint64 `json:"id"`
-	ClassName string `json:"className"`
+type UserRouter[ID webcloud.IDType, S, M, Q, T any] struct {
+	webcloud.BaseRouter[uint64, UserSDTO, UserMDTO, UserQDTO, UserDTO]
+	bizService webcloud.BaseBizService[uint64, UserSDTO, UserMDTO, UserQDTO, UserDTO]
 }
 
-type UserRouter[T User, ID uint64] struct {
-	webcloud.BaseRouter[User, uint64]
-	bizService webcloud.BaseBizService[User, uint64]
-}
-
-func NewUserRouter() *UserRouter[User, uint64] {
-	var bizService = UserService[User, uint64]{}
-	return &UserRouter[User, uint64]{
-		BaseRouter: webcloud.NewBaseRouter[User, uint64](bizService),
+func NewUserRouter() *UserRouter[uint64, UserSDTO, UserMDTO, UserQDTO, UserDTO] {
+	var bizService = UserBizService[uint64, UserSDTO, UserMDTO, UserQDTO, UserDTO]{}
+	return &UserRouter[uint64, UserSDTO, UserMDTO, UserQDTO, UserDTO]{
+		BaseRouter: webcloud.NewBaseRouter[uint64, UserSDTO, UserMDTO, UserQDTO, UserDTO](bizService),
 		bizService: bizService,
 	}
 }
 
-func (u *UserRouter[User, uint64]) Info() *ginstarter.RouterInfo {
+func (u *UserRouter[ID, S, M, Q, T]) Info() *ginstarter.RouterInfo {
 	return &ginstarter.RouterInfo{
 		GroupPath: "user",
 	}
 }
 
-func (u *UserRouter[User, uint64]) registerBaseHandler(router *ginstarter.RouterWrapper) {
+func (u *UserRouter[ID, S, M, Q, T]) registerBaseHandler(router *ginstarter.RouterWrapper) {
 	u.BaseRouter.RegisterBaseHandler(router, u.BaseRouter)
 }
 
-func (u *UserRouter[User, uint64]) Handlers(router *ginstarter.RouterWrapper) {
+func (u *UserRouter[ID, S, M, Q, T]) Handlers(router *ginstarter.RouterWrapper) {
 	// 注册基础路由
 	u.registerBaseHandler(router)
 
@@ -43,14 +38,14 @@ func (u *UserRouter[User, uint64]) Handlers(router *ginstarter.RouterWrapper) {
 
 // 自定义实现业务
 
-func (*UserRouter[User, uint64]) test() ginstarter.HandlerWrapper {
+func (*UserRouter[ID, S, M, Q, T]) test() ginstarter.HandlerWrapper {
 	return func(request *ginstarter.Request) (ginstarter.Response, error) {
 		return ginstarter.RespRestSuccess(), nil
 	}
 }
 
 // 重写基础服务的save方法
-func (*UserRouter[User, uint64]) save() ginstarter.HandlerWrapper {
+func (*UserRouter[ID, S, M, Q, T]) save() ginstarter.HandlerWrapper {
 	return func(request *ginstarter.Request) (ginstarter.Response, error) {
 		return ginstarter.RespRestSuccess(), nil
 	}

@@ -5,6 +5,9 @@ import (
 	"github.com/acexy/golang-toolkit/math/conversion"
 )
 
+type Authority[T any] struct {
+}
+
 type Pager[T any] struct {
 	Records []*T  `json:"records"` // 响应数据
 	Total   int64 `json:"total"`   // 响应总记录数
@@ -14,7 +17,7 @@ type Pager[T any] struct {
 }
 
 type IDType interface {
-	~int | ~int32 | ~int64 | ~uint64 | ~uint32 | ~uint | ~string
+	~int | ~uint | ~int32 | ~uint32 | ~int64 | ~uint64 | ~string
 }
 
 // CovertStringToID 字符串类型转换为实际主键类型
@@ -43,13 +46,10 @@ func CovertStringToID[ID IDType](value string) (ID, error) {
 	return v.(ID), err
 }
 
-type Authority[T any] struct {
-}
-
-type BaseBizService[T any, ID IDType] interface {
+type BaseBizService[ID IDType, S, M, Q, T any] interface {
 
 	// Save 保存数据
-	Save(t *T) (ID, error)
+	Save(save map[string]any) (ID, error)
 
 	// QueryByID 通过主键查询
 	QueryByID(id ID, result *T) (int64, error)

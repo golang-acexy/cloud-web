@@ -7,7 +7,7 @@ import (
 
 type User struct {
 	ID        uint64 `json:"id"`
-	ClassName string `json:"class_name"`
+	ClassName string `json:"className"`
 }
 
 type UserRouter[T User, ID uint64] struct {
@@ -23,17 +23,17 @@ func NewUserRouter() *UserRouter[User, uint64] {
 	}
 }
 
-func (u UserRouter[User, uint64]) Info() *ginstarter.RouterInfo {
+func (u *UserRouter[User, uint64]) Info() *ginstarter.RouterInfo {
 	return &ginstarter.RouterInfo{
 		GroupPath: "user",
 	}
 }
 
-func (u UserRouter[User, uint64]) registerBaseHandler(router *ginstarter.RouterWrapper) {
+func (u *UserRouter[User, uint64]) registerBaseHandler(router *ginstarter.RouterWrapper) {
 	u.BaseRouter.RegisterBaseHandler(router, u.BaseRouter)
 }
 
-func (u UserRouter[User, uint64]) Handlers(router *ginstarter.RouterWrapper) {
+func (u *UserRouter[User, uint64]) Handlers(router *ginstarter.RouterWrapper) {
 	// 注册基础路由
 	u.registerBaseHandler(router)
 
@@ -43,7 +43,7 @@ func (u UserRouter[User, uint64]) Handlers(router *ginstarter.RouterWrapper) {
 
 // 自定义实现业务
 
-func (UserRouter[User, uint64]) test() ginstarter.HandlerWrapper {
+func (*UserRouter[User, uint64]) test() ginstarter.HandlerWrapper {
 	return func(request *ginstarter.Request) (ginstarter.Response, error) {
 		return ginstarter.RespRestSuccess(), nil
 	}

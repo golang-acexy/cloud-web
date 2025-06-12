@@ -1,17 +1,38 @@
 package test
 
-import "fmt"
+import (
+	"github.com/golang-acexy/cloud-web/webcloud"
+)
 
 type UserService[T User, ID uint64] struct {
 }
 
 func (u UserService[T, ID]) Save(t *T) (ID, error) {
-	return 0, nil
+	//TODO implement me
+	panic("implement me")
 }
-func (u UserService[T, ID]) QueryById(id uint64, result *User) (int64, error) {
-	fmt.Println(id)
-	return 0, nil
+
+func (u UserService[T, ID]) QueryByID(id ID, result *T) (int64, error) {
+	//TODO implement me
+	panic("implement me")
 }
-func (u UserService[T, ID]) ModifyById(id ID, update map[string]any) (int64, error) {
-	return 0, nil
+
+func (u UserService[T, ID]) QueryOne(condition map[string]any, result *T) (int64, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (u UserService[T, ID]) QueryByPager(condition map[string]any, pager *webcloud.Pager[T]) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (u UserService[T, ID]) ModifyByID(id ID, update map[string]any) (int64, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (u UserService[T, ID]) RemoveByID(id ID) (int64, error) {
+	//TODO implement me
+	panic("implement me")
 }

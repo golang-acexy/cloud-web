@@ -18,28 +18,29 @@ func NewAdmUserRouter() *AdmUserRouter[uint64, UserSDTO, UserMDTO, UserQDTO, Use
 	}
 }
 
-func (u *AdmUserRouter[ID, S, M, Q, T]) Info() *ginstarter.RouterInfo {
+func (r *AdmUserRouter[ID, S, M, Q, T]) Info() *ginstarter.RouterInfo {
 	return &ginstarter.RouterInfo{
 		GroupPath: "adm/user/",
 	}
 }
 
-func (u *AdmUserRouter[ID, S, M, Q, T]) registerBaseHandler(router *ginstarter.RouterWrapper) {
-	u.BaseRouter.RegisterBaseHandler(router, u.BaseRouter)
+func (r *AdmUserRouter[ID, S, M, Q, T]) registerBaseHandler(router *ginstarter.RouterWrapper) {
+	r.BaseRouter.RegisterBaseHandler(router, r.BaseRouter)
 }
 
-func (u *AdmUserRouter[ID, S, M, Q, T]) Handlers(router *ginstarter.RouterWrapper) {
+func (r *AdmUserRouter[ID, S, M, Q, T]) Handlers(router *ginstarter.RouterWrapper) {
 	// 注册基础路由
-	u.registerBaseHandler(router)
+	r.registerBaseHandler(router)
 
 	// 自定义实现业务
-	router.GET("test", u.test())
+	router.GET("test", r.test())
 }
 
 // 自定义实现业务
 
-func (*AdmUserRouter[ID, S, M, Q, T]) test() ginstarter.HandlerWrapper {
+func (r *AdmUserRouter[ID, S, M, Q, T]) test() ginstarter.HandlerWrapper {
 	return func(request *ginstarter.Request) (ginstarter.Response, error) {
+		//authority := r.AuthorityFetch(request)
 		return ginstarter.RespRestSuccess(), nil
 	}
 }

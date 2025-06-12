@@ -11,25 +11,78 @@ import (
 )
 
 type BaseRouter[T any, ID IDType] struct {
-	baseBizService      BaseBizService[T, ID]
-	updateAllowedFields []string // 安全设置
+	baseBizService BaseBizService[T, ID]
+
+	// 安全设置
+	updateAllowedFields []string // 允许自由更新的字段
+	queryAllowedFields  []string // 允许自由查询的字段
 }
 
-func NewBaseRouter[T any, ID IDType](baseBizService BaseBizService[T, ID]) BaseRouter[T, ID] {
+// NewBaseRouter 创建基础路由
+// notAllowedUpdateFieldNames: 设置不允许更新的字段 (驼峰结构体中的字段名)
+func NewBaseRouter[T any, ID IDType](baseBizService BaseBizService[T, ID], notAllowedUpdateFieldNames ...string) BaseRouter[T, ID] {
 	var t T
-	field, err := reflect.AllFieldName(t)
+	allFieldNames, err := reflect.AllFieldName(t)
 	if err != nil {
 		panic(err)
 	}
+	allFieldNames = coll.SliceCollect(allFieldNames, func(field string) string {
+		if field == "ID" || field == "Id" {
+			return "id"
+		}
+		return str.CamelToSnake(str.LowFirstChar(field))
+	})
+	if len(notAllowedUpdateFieldNames) == 0 {
+		notAllowedUpdateFieldNames = []string{
+			"id",
+			"createdAt",
+			"modifyAt",
+			"createTime",
+			"updateTime",
+			"updateAt",
+		}
+	}
+	forbidUpdateNames := coll.SliceCollect(notAllowedUpdateFieldNames, func(field string) string {
+		if field == "ID" || field == "Id" {
+			return "id"
+		}
+		return str.CamelToSnake(str.LowFirstChar(field))
+	})
+
 	return BaseRouter[T, ID]{
 		baseBizService: baseBizService,
-		updateAllowedFields: coll.SliceCollect(field, func(field string) string {
-			if field == "ID" || field == "Id" {
-				return "id"
-			}
-			return str.CamelToSnake(str.LowFirstChar(field))
+		updateAllowedFields: coll.SliceFilter(allFieldNames, func(field string) bool {
+			return !coll.SliceContains(forbidUpdateNames, field)
 		}),
+		queryAllowedFields: allFieldNames,
 	}
+}
+
+// SetAllowedUpdateFieldNames 设置允许更新的字段 (驼峰结构体中的字段名) 将完全覆盖当前设置
+func (b *BaseRouter[T, ID]) SetAllowedUpdateFieldNames(allowedUpdateFieldNames ...string) {
+	if len(allowedUpdateFieldNames) > 0 {
+		b.updateAllowedFields = coll.SliceCollect(allowedUpdateFieldNames, func(field string) string {
+			return str.CamelToSnake(str.LowFirstChar(field))
+		})
+	}
+}
+
+// checkField 安全检查
+func (b *BaseRouter[T, ID]) checkField(param map[string]any, isWrite bool) bool {
+	allowedFieldNames := func(write bool) []string {
+		if isWrite {
+			return b.updateAllowedFields
+		}
+		return b.queryAllowedFields
+	}(isWrite)
+	input := coll.MapFilterToSlice(param, func(k string, v any) (string, bool) {
+		return str.CamelToSnake(k), true
+	})
+	if !coll.SliceIsSubset(input, allowedFieldNames) {
+		logger.Logrus().Warningln("request field not allowed: ", input)
+		return false
+	}
+	return true
 }
 
 // RegisterBaseHandler 注册基础路由
@@ -37,23 +90,13 @@ func (b *BaseRouter[T, ID]) RegisterBaseHandler(router *ginstarter.RouterWrapper
 	router.POST1("save", []string{gin.MIMEJSON, gin.MIMEPOSTForm}, baseRouter.save())
 
 	router.GET("by-id/:id", baseRouter.queryById())
-	router.GET("query-one", baseRouter.queryOne())
+	router.POST1("query-one", []string{gin.MIMEJSON, gin.MIMEPOSTForm}, baseRouter.queryOne())
 	router.POST1("query-by-page", []string{gin.MIMEJSON, gin.MIMEPOSTForm}, baseRouter.queryById())
 	router.PUT1("by-id/:id", []string{gin.MIMEJSON}, baseRouter.updateById())
 	router.DELETE("by-id/:id", baseRouter.deleteById())
 }
 
-// checkField 安全检查
-func (b *BaseRouter[T, ID]) checkField(param map[string]any) bool {
-	input := coll.MapFilterToSlice(param, func(k string, v any) (string, bool) {
-		return str.CamelToSnake(k), true
-	})
-	if !coll.SliceIsSubset(input, b.updateAllowedFields) {
-		logger.Logrus().Warningln("request field not allowed: ", input)
-		return false
-	}
-	return true
-}
+// 基础CRUD
 
 func (b *BaseRouter[T, ID]) save() ginstarter.HandlerWrapper {
 	return func(request *ginstarter.Request) (ginstarter.Response, error) {
@@ -97,7 +140,7 @@ func (b *BaseRouter[T, ID]) queryOne() ginstarter.HandlerWrapper {
 		if len(param) == 0 {
 			return ginstarter.RespRestBadParameters(), nil
 		}
-		if !b.checkField(param) {
+		if !b.checkField(param, false) {
 			return ginstarter.RespRestBadParameters(), nil
 		}
 		var t T
@@ -144,7 +187,7 @@ func (b *BaseRouter[T, ID]) queryByPage() ginstarter.HandlerWrapper {
 			if len(conditionMap) == 0 {
 				return ginstarter.RespRestBadParameters(), nil
 			}
-			if !b.checkField(conditionMap) {
+			if !b.checkField(conditionMap, false) {
 				return ginstarter.RespRestBadParameters(), nil
 			}
 		}
@@ -168,7 +211,7 @@ func (b *BaseRouter[T, ID]) updateById() ginstarter.HandlerWrapper {
 		if len(update) == 0 {
 			return ginstarter.RespRestBadParameters(), nil
 		}
-		if !b.checkField(update) {
+		if !b.checkField(update, true) {
 			return ginstarter.RespRestBadParameters(), nil
 		}
 		_, err = b.baseBizService.ModifyByID(id, update)

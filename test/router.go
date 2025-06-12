@@ -48,3 +48,10 @@ func (*UserRouter[User, uint64]) test() ginstarter.HandlerWrapper {
 		return ginstarter.RespRestSuccess(), nil
 	}
 }
+
+// 重写基础服务的save方法
+func (*UserRouter[User, uint64]) save() ginstarter.HandlerWrapper {
+	return func(request *ginstarter.Request) (ginstarter.Response, error) {
+		return ginstarter.RespRestSuccess(), nil
+	}
+}

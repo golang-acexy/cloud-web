@@ -33,7 +33,12 @@ var defaultForbitColumns = []string{
 type BaseRouter[ID IDType, S, M, Q, T any] struct {
 	baseBizService BaseBizService[ID, S, M, Q, T]
 
-	// 安全设置
+	// 权限控制
+	authorityFetch  AuthorityFetch[ID]
+	authorityCheck  bool
+	authorityColumn string
+
+	// 字段安全设置
 	modifyAllowedColumns []string // 允许自由更新的字段
 	queryAllowedColumns  []string // 允许自由查询的字段
 	saveAllowedColumns   []string // 允许自由保存的字段
@@ -52,7 +57,7 @@ func structNames2Columns(structName []string) []string {
 // 为解决零值保存/新增/查询的问题，基础Router的默认动作均将请求参数通过转换为map[jsonKey]jsonValue的形式向后传递参数
 // 但这样会增加请求方自由度，出现恶意的请求编辑的jsonKey字段作为数据库直接交互的字段，基础Router根据不同的结构体所具有的字段来限定
 // **不要将不能更新的字段用于设置在结构体中**
-func NewBaseRouter[ID IDType, S, M, Q, T any](baseBizService BaseBizService[ID, S, M, Q, T]) BaseRouter[ID, S, M, Q, T] {
+func NewBaseRouter[ID IDType, S, M, Q, T any](baseBizService BaseBizService[ID, S, M, Q, T]) *BaseRouter[ID, S, M, Q, T] {
 	var q Q
 	var m M
 	var s S
@@ -70,7 +75,7 @@ func NewBaseRouter[ID IDType, S, M, Q, T any](baseBizService BaseBizService[ID, 
 		panic(err)
 	}
 
-	return BaseRouter[ID, S, M, Q, T]{
+	return &BaseRouter[ID, S, M, Q, T]{
 		baseBizService: baseBizService,
 		modifyAllowedColumns: coll.SliceFilter(structNames2Columns(modifyFieldNames), func(field string) bool {
 			return !coll.SliceContains(defaultForbitColumns, field)
@@ -80,6 +85,20 @@ func NewBaseRouter[ID IDType, S, M, Q, T any](baseBizService BaseBizService[ID, 
 			return !coll.SliceContains(defaultForbitColumns, field)
 		}),
 	}
+}
+
+// NewBaseRouterWithAuthority 创建基础路由 自动携带数据权限控制
+// authorityFetch 提供获取授权信息的接口
+// column 数据权限控制字段
+func NewBaseRouterWithAuthority[ID IDType, S, M, Q, T any](baseBizService BaseBizService[ID, S, M, Q, T], authorityFetch AuthorityFetch[ID], column string) *BaseRouter[ID, S, M, Q, T] {
+	router := NewBaseRouter[ID, S, M, Q, T](baseBizService)
+	router.authorityFetch = authorityFetch
+	router.authorityCheck = true
+	router.authorityColumn = column
+	if !coll.SliceContains(router.queryAllowedColumns, column) {
+		router.queryAllowedColumns = append(router.queryAllowedColumns, column)
+	}
+	return router
 }
 
 func (b *BaseRouter[ID, S, M, Q, T]) convertJsonToMap(request *ginstarter.Request, m mode) (map[string]any, error) {
@@ -119,8 +138,20 @@ func (b *BaseRouter[ID, S, M, Q, T]) checkField(param map[string]any, m mode) bo
 	return true
 }
 
+// 设置数据权限控制字段
+func (b *BaseRouter[ID, S, M, Q, T]) setAuthorityLimit(request *ginstarter.Request, param map[string]any) bool {
+	if b.authorityCheck {
+		authority := b.AuthorityFetch(request)
+		if authority == nil {
+			return false
+		}
+		param[b.authorityColumn] = authority.GetIdentityID()
+	}
+	return true
+}
+
 // RegisterBaseHandler 注册基础路由
-func (b *BaseRouter[ID, S, M, Q, T]) RegisterBaseHandler(router *ginstarter.RouterWrapper, baseRouter BaseRouter[ID, S, M, Q, T]) {
+func (b *BaseRouter[ID, S, M, Q, T]) RegisterBaseHandler(router *ginstarter.RouterWrapper, baseRouter *BaseRouter[ID, S, M, Q, T]) {
 	router.POST1("save", []string{gin.MIMEJSON}, baseRouter.save())
 
 	// 通过主键查询单条数据
@@ -135,6 +166,15 @@ func (b *BaseRouter[ID, S, M, Q, T]) RegisterBaseHandler(router *ginstarter.Rout
 	router.DELETE("by-id/:id", baseRouter.deleteById())
 }
 
+// AuthorityFetch 获取当前请求的认证信息
+func (b *BaseRouter[ID, S, M, Q, T]) AuthorityFetch(request *ginstarter.Request) Authority[ID] {
+	if b.authorityFetch == nil {
+		logger.Logrus().Warningln("no set authority fetch method")
+		return nil
+	}
+	return b.authorityFetch(request)
+}
+
 // 基础CRUD
 
 func (b *BaseRouter[ID, S, M, Q, T]) save() ginstarter.HandlerWrapper {
@@ -142,6 +182,10 @@ func (b *BaseRouter[ID, S, M, Q, T]) save() ginstarter.HandlerWrapper {
 		param, err := b.convertJsonToMap(request, save)
 		if err != nil {
 			return ginstarter.RespRestBadParameters(), nil
+		}
+		flag := b.setAuthorityLimit(request, param)
+		if !flag {
+			return ginstarter.RespRestUnAuthorized(), nil
 		}
 		id, err := b.baseBizService.Save(param)
 		if err != nil {
@@ -158,8 +202,13 @@ func (b *BaseRouter[ID, S, M, Q, T]) queryById() ginstarter.HandlerWrapper {
 		if err != nil {
 			return nil, err
 		}
+		param := map[string]any{"id": id}
+		flag := b.setAuthorityLimit(request, param)
+		if !flag {
+			return ginstarter.RespRestUnAuthorized(), nil
+		}
 		var t T
-		row, err := b.baseBizService.QueryByID(id, &t)
+		row, err := b.baseBizService.QueryByID(param, &t)
 		if err != nil {
 			return nil, err
 		}
@@ -175,6 +224,10 @@ func (b *BaseRouter[ID, S, M, Q, T]) queryOne() ginstarter.HandlerWrapper {
 		param, err := b.convertJsonToMap(request, query)
 		if err != nil {
 			return ginstarter.RespRestBadParameters(), nil
+		}
+		flag := b.setAuthorityLimit(request, param)
+		if !flag {
+			return ginstarter.RespRestUnAuthorized(), nil
 		}
 		var t T
 		row, err := b.baseBizService.QueryOne(param, &t)
@@ -211,20 +264,24 @@ func (b *BaseRouter[ID, S, M, Q, T]) queryByPage() ginstarter.HandlerWrapper {
 		}
 		condition := paramJson.Get("condition")
 		rawConditionJson := condition.RawJsonString()
-		var conditionMap map[string]any
+		var param map[string]any
 		if rawConditionJson != "" {
 			if err != nil {
 				return nil, err
 			}
-			json.ParseJsonPanic(rawConditionJson, &conditionMap)
-			if len(conditionMap) == 0 {
+			json.ParseJsonPanic(rawConditionJson, &param)
+			if len(param) == 0 {
 				return ginstarter.RespRestBadParameters(), nil
 			}
-			if !b.checkField(conditionMap, query) {
+			if !b.checkField(param, query) {
 				return ginstarter.RespRestBadParameters(), nil
+			}
+			flag := b.setAuthorityLimit(request, param)
+			if !flag {
+				return ginstarter.RespRestUnAuthorized(), nil
 			}
 		}
-		b.baseBizService.QueryByPager(conditionMap, &pager)
+		b.baseBizService.QueryByPager(param, &pager)
 		return ginstarter.RespRestSuccess(pager), nil
 	}
 }
@@ -235,6 +292,7 @@ func (b *BaseRouter[ID, S, M, Q, T]) updateById() ginstarter.HandlerWrapper {
 		if err != nil {
 			return nil, err
 		}
+
 		var update map[string]any
 		rawBytes, err := request.GetRawBodyData()
 		if err != nil {
@@ -247,7 +305,14 @@ func (b *BaseRouter[ID, S, M, Q, T]) updateById() ginstarter.HandlerWrapper {
 		if !b.checkField(update, modify) {
 			return ginstarter.RespRestBadParameters(), nil
 		}
-		_, err = b.baseBizService.ModifyByID(id, update)
+
+		param := map[string]any{"id": id}
+		flag := b.setAuthorityLimit(request, param)
+		if !flag {
+			return ginstarter.RespRestUnAuthorized(), nil
+		}
+
+		_, err = b.baseBizService.ModifyByID(param, update)
 		if err != nil {
 			return nil, err
 		}
@@ -261,7 +326,12 @@ func (b *BaseRouter[ID, S, M, Q, T]) deleteById() ginstarter.HandlerWrapper {
 		if err != nil {
 			return nil, err
 		}
-		_, err = b.baseBizService.RemoveByID(id)
+		param := map[string]any{"id": id}
+		flag := b.setAuthorityLimit(request, param)
+		if !flag {
+			return ginstarter.RespRestUnAuthorized(), nil
+		}
+		_, err = b.baseBizService.RemoveByID(param)
 		if err != nil {
 			return nil, err
 		}

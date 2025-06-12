@@ -6,6 +6,19 @@ type User struct {
 	ClassName string `json:"className"`
 }
 
+type AuthorityUser[ID uint64] struct {
+	id uint64
+}
+
+func (a AuthorityUser[ID]) GetIdentityID() uint64 {
+	return a.id
+}
+
+func (a AuthorityUser[ID]) GetPlatformID() string {
+	//TODO implement me
+	panic("implement me")
+}
+
 type UserSDTO struct {
 }
 

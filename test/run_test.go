@@ -18,7 +18,8 @@ func init() {
 				UseReusePortModel: true,
 				DebugModule:       true,
 				Routers: []ginstarter.Router{
-					NewUserRouter(),
+					NewUsrUserRouter(),
+					NewAdmUserRouter(),
 				},
 				EnableGoroutineTraceIdResponse: true,
 			},

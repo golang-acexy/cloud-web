@@ -24,8 +24,8 @@ var defaultForbitColumns = []string{
 	"id",
 	"created_at",
 	"create_time",
-	"modify_at",
-	"modify_time",
+	"modified_at",
+	"modified_time",
 	"update_time",
 	"update_at",
 }
@@ -34,9 +34,9 @@ type BaseRouter[ID IDType, S, M, Q, T any] struct {
 	baseBizService BaseBizService[ID, S, M, Q, T]
 
 	// 权限控制
-	authorityFetch  AuthorityFetch[ID]
-	authorityCheck  bool
-	authorityColumn string
+	authorityFetch AuthorityFetch[ID]
+	authorityCheck bool
+	authorityField string
 
 	// 字段安全设置
 	modifyAllowedColumns []string // 允许自由更新的字段
@@ -90,18 +90,19 @@ func NewBaseRouter[ID IDType, S, M, Q, T any](baseBizService BaseBizService[ID, 
 // NewBaseRouterWithAuthority 创建基础路由 自动携带数据权限控制
 // authorityFetch 提供获取授权信息的接口
 // column 数据权限控制字段
-func NewBaseRouterWithAuthority[ID IDType, S, M, Q, T any](baseBizService BaseBizService[ID, S, M, Q, T], authorityFetch AuthorityFetch[ID], column string) *BaseRouter[ID, S, M, Q, T] {
+func NewBaseRouterWithAuthority[ID IDType, S, M, Q, T any](baseBizService BaseBizService[ID, S, M, Q, T], authorityFetch AuthorityFetch[ID], field string) *BaseRouter[ID, S, M, Q, T] {
 	router := NewBaseRouter[ID, S, M, Q, T](baseBizService)
 	router.authorityFetch = authorityFetch
 	router.authorityCheck = true
-	router.authorityColumn = column
-	if !coll.SliceContains(router.queryAllowedColumns, column) {
-		router.queryAllowedColumns = append(router.queryAllowedColumns, column)
+	router.authorityField = field
+	if !coll.SliceContains(router.queryAllowedColumns, field) {
+		router.queryAllowedColumns = append(router.queryAllowedColumns, field)
 	}
 	return router
 }
 
-func (b *BaseRouter[ID, S, M, Q, T]) convertJsonToMap(request *ginstarter.Request, m mode) (map[string]any, error) {
+// ConvertJsonToMap 将json转换成map
+func (b *BaseRouter[ID, S, M, Q, T]) ConvertJsonToMap(request *ginstarter.Request, m mode) (map[string]any, error) {
 	var param map[string]any
 	rawBytes, err := request.GetRawBodyData()
 	if err != nil {
@@ -138,26 +139,30 @@ func (b *BaseRouter[ID, S, M, Q, T]) checkField(param map[string]any, m mode) bo
 	return true
 }
 
-// 设置数据权限控制字段
-func (b *BaseRouter[ID, S, M, Q, T]) setAuthorityLimit(request *ginstarter.Request, param map[string]any) bool {
+// SetAuthorityLimit 针对于需要数据权限控制的路由，设置数据权限控制字段
+func (b *BaseRouter[ID, S, M, Q, T]) SetAuthorityLimit(request *ginstarter.Request, paramPtr any) (bool, error) {
 	if b.authorityCheck {
-		authority := b.AuthorityFetch(request)
+		authority := b.GetAuthorityData(request)
 		if authority == nil {
-			return false
+			return false, nil
 		}
-		param[b.authorityColumn] = authority.GetIdentityID()
+		err := reflect.SetFieldValue(paramPtr, map[string]any{
+			b.authorityField: authority.GetIdentityID(),
+		})
+		return false, err
 	}
-	return true
+	return true, nil
 }
 
 // RegisterBaseHandler 注册基础路由
 func (b *BaseRouter[ID, S, M, Q, T]) RegisterBaseHandler(router *ginstarter.RouterWrapper, baseRouter *BaseRouter[ID, S, M, Q, T]) {
 	router.POST1("save", []string{gin.MIMEJSON}, baseRouter.save())
-
 	// 通过主键查询单条数据
 	router.GET("by-id/:id", baseRouter.queryById())
 	// 通过条件查询单条数据
 	router.POST1("query-one", []string{gin.MIMEJSON}, baseRouter.queryOne())
+	// 通过条件查询多条数据
+	router.POST1("query", []string{gin.MIMEJSON}, baseRouter.query())
 	// 通过条件分页查询
 	router.POST1("query-by-page", []string{gin.MIMEJSON}, baseRouter.queryById())
 	// 通过主键更新数据
@@ -166,10 +171,10 @@ func (b *BaseRouter[ID, S, M, Q, T]) RegisterBaseHandler(router *ginstarter.Rout
 	router.DELETE("by-id/:id", baseRouter.deleteById())
 }
 
-// AuthorityFetch 获取当前请求的认证信息
-func (b *BaseRouter[ID, S, M, Q, T]) AuthorityFetch(request *ginstarter.Request) Authority[ID] {
+// GetAuthorityData 获取当前请求的认证信息
+func (b *BaseRouter[ID, S, M, Q, T]) GetAuthorityData(request *ginstarter.Request) Authority[ID] {
 	if b.authorityFetch == nil {
-		logger.Logrus().Warningln("no set authority fetch method")
+		logger.Logrus().Warningln("not set authority fetch method")
 		return nil
 	}
 	return b.authorityFetch(request)
@@ -179,12 +184,13 @@ func (b *BaseRouter[ID, S, M, Q, T]) AuthorityFetch(request *ginstarter.Request)
 
 func (b *BaseRouter[ID, S, M, Q, T]) save() ginstarter.HandlerWrapper {
 	return func(request *ginstarter.Request) (ginstarter.Response, error) {
-		param, err := b.convertJsonToMap(request, save)
+		var param S
+		request.MustBindBodyAuto(&param)
+		pass, err := b.SetAuthorityLimit(request, param)
 		if err != nil {
-			return ginstarter.RespRestBadParameters(), nil
+			return nil, err
 		}
-		flag := b.setAuthorityLimit(request, param)
-		if !flag {
+		if !pass {
 			return ginstarter.RespRestUnAuthorized(), nil
 		}
 		id, err := b.baseBizService.Save(param)
@@ -203,7 +209,10 @@ func (b *BaseRouter[ID, S, M, Q, T]) queryById() ginstarter.HandlerWrapper {
 			return nil, err
 		}
 		param := map[string]any{"id": id}
-		flag := b.setAuthorityLimit(request, param)
+		flag, err := b.SetAuthorityLimit(request, param)
+		if err != nil {
+			return nil, err
+		}
 		if !flag {
 			return ginstarter.RespRestUnAuthorized(), nil
 		}
@@ -219,13 +228,41 @@ func (b *BaseRouter[ID, S, M, Q, T]) queryById() ginstarter.HandlerWrapper {
 	}
 }
 
-func (b *BaseRouter[ID, S, M, Q, T]) queryOne() ginstarter.HandlerWrapper {
+func (b *BaseRouter[ID, S, M, Q, T]) query() ginstarter.HandlerWrapper {
 	return func(request *ginstarter.Request) (ginstarter.Response, error) {
-		param, err := b.convertJsonToMap(request, query)
+		param, err := b.ConvertJsonToMap(request, query)
 		if err != nil {
 			return ginstarter.RespRestBadParameters(), nil
 		}
-		flag := b.setAuthorityLimit(request, param)
+		flag, err := b.SetAuthorityLimit(request, param)
+		if err != nil {
+			return nil, err
+		}
+		if !flag {
+			return ginstarter.RespRestUnAuthorized(), nil
+		}
+		var t []*T
+		row, err := b.baseBizService.Query(param, &t)
+		if err != nil {
+			return nil, err
+		}
+		if row == 0 {
+			return ginstarter.RespRestSuccess(), nil
+		}
+		return ginstarter.RespRestSuccess(t), nil
+	}
+}
+
+func (b *BaseRouter[ID, S, M, Q, T]) queryOne() ginstarter.HandlerWrapper {
+	return func(request *ginstarter.Request) (ginstarter.Response, error) {
+		param, err := b.ConvertJsonToMap(request, query)
+		if err != nil {
+			return ginstarter.RespRestBadParameters(), nil
+		}
+		flag, err := b.SetAuthorityLimit(request, param)
+		if err != nil {
+			return nil, err
+		}
 		if !flag {
 			return ginstarter.RespRestUnAuthorized(), nil
 		}
@@ -276,7 +313,10 @@ func (b *BaseRouter[ID, S, M, Q, T]) queryByPage() ginstarter.HandlerWrapper {
 			if !b.checkField(param, query) {
 				return ginstarter.RespRestBadParameters(), nil
 			}
-			flag := b.setAuthorityLimit(request, param)
+			flag, err := b.SetAuthorityLimit(request, param)
+			if err != nil {
+				return nil, err
+			}
 			if !flag {
 				return ginstarter.RespRestUnAuthorized(), nil
 			}
@@ -307,7 +347,10 @@ func (b *BaseRouter[ID, S, M, Q, T]) updateById() ginstarter.HandlerWrapper {
 		}
 
 		param := map[string]any{"id": id}
-		flag := b.setAuthorityLimit(request, param)
+		flag, err := b.SetAuthorityLimit(request, param)
+		if err != nil {
+			return nil, err
+		}
 		if !flag {
 			return ginstarter.RespRestUnAuthorized(), nil
 		}
@@ -327,7 +370,10 @@ func (b *BaseRouter[ID, S, M, Q, T]) deleteById() ginstarter.HandlerWrapper {
 			return nil, err
 		}
 		param := map[string]any{"id": id}
-		flag := b.setAuthorityLimit(request, param)
+		flag, err := b.SetAuthorityLimit(request, param)
+		if err != nil {
+			return nil, err
+		}
 		if !flag {
 			return ginstarter.RespRestUnAuthorized(), nil
 		}

@@ -40,7 +40,7 @@ func (r *AdmUserRouter[ID, S, M, Q, T]) Handlers(router *ginstarter.RouterWrappe
 
 func (r *AdmUserRouter[ID, S, M, Q, T]) test() ginstarter.HandlerWrapper {
 	return func(request *ginstarter.Request) (ginstarter.Response, error) {
-		//authority := r.AuthorityFetch(request)
+		//authority := r.GetAuthorityData(request)
 		return ginstarter.RespRestSuccess(), nil
 	}
 }

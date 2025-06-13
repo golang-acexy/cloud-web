@@ -6,6 +6,8 @@ import (
 	"github.com/golang-acexy/starter-gin/ginstarter"
 )
 
+type Platform string
+
 // IDType 主键类型
 type IDType interface {
 	~int | ~uint | ~int32 | ~uint32 | ~int64 | ~uint64 | ~string
@@ -15,7 +17,7 @@ type Authority[ID IDType] interface {
 	// GetIdentityID 获取唯一标识
 	GetIdentityID() ID
 	// GetPlatformID 所属平台标识
-	GetPlatformID() string
+	GetPlatformID() Platform
 }
 
 // AuthorityFetch 获取权限信息
@@ -59,13 +61,16 @@ func CovertStringToID[ID IDType](value string) (ID, error) {
 type BaseBizService[ID IDType, S, M, Q, T any] interface {
 
 	// Save 保存数据
-	Save(save map[string]any) (ID, error)
+	Save(save S) (ID, error)
 
 	// QueryByID 通过主键查询
 	QueryByID(condition map[string]any, result *T) (int64, error)
 
 	// QueryOne 通过条件查询一条数据
 	QueryOne(condition map[string]any, result *T) (int64, error)
+
+	// Query 通过条件多条数据
+	Query(condition map[string]any, result *[]*T) (int64, error)
 
 	// QueryByPager 分页查询
 	QueryByPager(condition map[string]any, pager *Pager[T])

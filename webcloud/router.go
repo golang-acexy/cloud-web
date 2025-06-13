@@ -357,8 +357,7 @@ func (b *BaseRouter[ID, S, M, Q, D]) updateById() ginstarter.HandlerWrapper {
 		if !flag {
 			return ginstarter.RespRestUnAuthorized(), nil
 		}
-
-		_, err = b.baseBizService.ModifyByID(param, update)
+		_, err = b.baseBizService.ModifyByID(update, param)
 		if err != nil {
 			return nil, err
 		}

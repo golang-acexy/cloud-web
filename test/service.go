@@ -5,7 +5,7 @@ import "github.com/golang-acexy/cloud-web/webcloud"
 type UserBizService[ID webcloud.IDType, S, M, Q, T any] struct {
 }
 
-func (u UserBizService[ID, S, M, Q, T]) Save(save S) (ID, error) {
+func (u UserBizService[ID, S, M, Q, T]) Save(save *S) (ID, error) {
 	//TODO implement me
 	panic("implement me")
 }

@@ -61,7 +61,7 @@ func CovertStringToID[ID IDType](value string) (ID, error) {
 type BaseBizService[ID IDType, S, M, Q, T any] interface {
 
 	// Save 保存数据
-	Save(save S) (ID, error)
+	Save(save *S) (ID, error)
 
 	// QueryByID 通过主键查询
 	QueryByID(condition map[string]any, result *T) (int64, error)

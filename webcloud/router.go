@@ -101,7 +101,7 @@ func NewBaseRouterWithAuthority[ID IDType, S, M, Q, D any](baseBizService BaseBi
 	return router
 }
 
-// ConvertJsonToMap 将json转换成map
+// ConvertJsonToMap 将json转换成map 注意，key为自动转换成数据库字段名
 func (b *BaseRouter[ID, S, M, Q, D]) ConvertJsonToMap(request *ginstarter.Request, m mode) (map[string]any, error) {
 	var param map[string]any
 	rawBytes, err := request.GetRawBodyData()
@@ -115,7 +115,9 @@ func (b *BaseRouter[ID, S, M, Q, D]) ConvertJsonToMap(request *ginstarter.Reques
 	if !b.checkField(param, m) {
 		return nil, errors.New("bad request param")
 	}
-	return param, nil
+	return coll.MapCollect(param, func(k string, v any) (string, any) {
+		return str.CamelToSnake(k), v
+	}), nil
 }
 
 // checkField 安全检查
@@ -139,8 +141,8 @@ func (b *BaseRouter[ID, S, M, Q, D]) checkField(param map[string]any, m mode) bo
 	return true
 }
 
-// SetAuthorityLimit 针对于需要数据权限控制的路由，设置数据权限控制字段
-func (b *BaseRouter[ID, S, M, Q, D]) SetAuthorityLimit(request *ginstarter.Request, paramPtr any) (bool, error) {
+// SetStructAuthorityLimit 针对于需要数据权限控制的路由，设置数据权限控制字段
+func (b *BaseRouter[ID, S, M, Q, D]) SetStructAuthorityLimit(request *ginstarter.Request, paramPtr any) (bool, error) {
 	if b.authorityCheck {
 		authority := b.GetAuthorityData(request)
 		if authority == nil {
@@ -149,9 +151,28 @@ func (b *BaseRouter[ID, S, M, Q, D]) SetAuthorityLimit(request *ginstarter.Reque
 		err := reflect.SetFieldValue(paramPtr, map[string]any{
 			b.authorityField: authority.GetIdentityID(),
 		})
+		if err != nil {
+			logger.Logrus().Errorln("set authority field error:", err)
+		}
 		return false, err
 	}
 	return true, nil
+}
+
+// SetMapAuthorityLimit 针对于需要数据权限控制的路由，设置数据权限控制字段
+func (b *BaseRouter[ID, S, M, Q, D]) SetMapAuthorityLimit(request *ginstarter.Request, param map[string]any) bool {
+	if b.authorityCheck {
+		authority := b.GetAuthorityData(request)
+		if authority == nil {
+			return false
+		}
+		if len(param) == 0 {
+			param = make(map[string]any)
+		}
+		param[str.CamelToSnake(b.authorityField)] = authority.GetIdentityID()
+		return false
+	}
+	return true
 }
 
 // RegisterBaseHandler 注册基础路由
@@ -186,7 +207,7 @@ func (b *BaseRouter[ID, S, M, Q, D]) save() ginstarter.HandlerWrapper {
 	return func(request *ginstarter.Request) (ginstarter.Response, error) {
 		var param S
 		request.MustBindBodyAuto(&param)
-		pass, err := b.SetAuthorityLimit(request, param)
+		pass, err := b.SetStructAuthorityLimit(request, param)
 		if err != nil {
 			return nil, err
 		}
@@ -209,10 +230,7 @@ func (b *BaseRouter[ID, S, M, Q, D]) queryById() ginstarter.HandlerWrapper {
 			return nil, err
 		}
 		param := map[string]any{"id": id}
-		flag, err := b.SetAuthorityLimit(request, param)
-		if err != nil {
-			return nil, err
-		}
+		flag := b.SetMapAuthorityLimit(request, param)
 		if !flag {
 			return ginstarter.RespRestUnAuthorized(), nil
 		}
@@ -234,7 +252,7 @@ func (b *BaseRouter[ID, S, M, Q, D]) query() ginstarter.HandlerWrapper {
 		if err != nil {
 			return ginstarter.RespRestBadParameters(), nil
 		}
-		flag, err := b.SetAuthorityLimit(request, param)
+		flag, err := b.SetStructAuthorityLimit(request, param)
 		if err != nil {
 			return nil, err
 		}
@@ -259,7 +277,7 @@ func (b *BaseRouter[ID, S, M, Q, D]) queryOne() ginstarter.HandlerWrapper {
 		if err != nil {
 			return ginstarter.RespRestBadParameters(), nil
 		}
-		flag, err := b.SetAuthorityLimit(request, param)
+		flag, err := b.SetStructAuthorityLimit(request, param)
 		if err != nil {
 			return nil, err
 		}
@@ -313,7 +331,7 @@ func (b *BaseRouter[ID, S, M, Q, D]) queryByPage() ginstarter.HandlerWrapper {
 			if !b.checkField(param, query) {
 				return ginstarter.RespRestBadParameters(), nil
 			}
-			flag, err := b.SetAuthorityLimit(request, param)
+			flag, err := b.SetStructAuthorityLimit(request, param)
 			if err != nil {
 				return nil, err
 			}
@@ -350,7 +368,7 @@ func (b *BaseRouter[ID, S, M, Q, D]) updateById() ginstarter.HandlerWrapper {
 		}
 
 		param := map[string]any{"id": id}
-		flag, err := b.SetAuthorityLimit(request, param)
+		flag, err := b.SetStructAuthorityLimit(request, param)
 		if err != nil {
 			return nil, err
 		}
@@ -372,7 +390,7 @@ func (b *BaseRouter[ID, S, M, Q, D]) deleteById() ginstarter.HandlerWrapper {
 			return nil, err
 		}
 		param := map[string]any{"id": id}
-		flag, err := b.SetAuthorityLimit(request, param)
+		flag, err := b.SetStructAuthorityLimit(request, param)
 		if err != nil {
 			return nil, err
 		}

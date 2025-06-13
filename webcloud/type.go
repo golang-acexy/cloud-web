@@ -73,7 +73,7 @@ type BaseBizService[ID IDType, S, M, Q, D any] interface {
 	Query(condition map[string]any, result *[]*D) (int64, error)
 
 	// QueryByPager 分页查询
-	QueryByPager(condition map[string]any, pager *Pager[D])
+	QueryByPager(condition map[string]any, pager *Pager[D]) error
 
 	// ModifyByID 通过主键修改数据
 	ModifyByID(condition map[string]any, update map[string]any) (int64, error)

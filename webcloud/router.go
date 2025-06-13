@@ -321,7 +321,10 @@ func (b *BaseRouter[ID, S, M, Q, D]) queryByPage() ginstarter.HandlerWrapper {
 				return ginstarter.RespRestUnAuthorized(), nil
 			}
 		}
-		b.baseBizService.QueryByPager(param, &pager)
+		err = b.baseBizService.QueryByPager(param, &pager)
+		if err != nil {
+			return nil, err
+		}
 		return ginstarter.RespRestSuccess(pager), nil
 	}
 }

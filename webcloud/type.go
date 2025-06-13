@@ -58,22 +58,22 @@ func CovertStringToID[ID IDType](value string) (ID, error) {
 	return v.(ID), err
 }
 
-type BaseBizService[ID IDType, S, M, Q, T any] interface {
+type BaseBizService[ID IDType, S, M, Q, D any] interface {
 
 	// Save 保存数据
 	Save(save *S) (ID, error)
 
 	// QueryByID 通过主键查询
-	QueryByID(condition map[string]any, result *T) (int64, error)
+	QueryByID(condition map[string]any, result *D) (int64, error)
 
 	// QueryOne 通过条件查询一条数据
-	QueryOne(condition map[string]any, result *T) (int64, error)
+	QueryOne(condition map[string]any, result *D) (int64, error)
 
 	// Query 通过条件多条数据
-	Query(condition map[string]any, result *[]*T) (int64, error)
+	Query(condition map[string]any, result *[]*D) (int64, error)
 
 	// QueryByPager 分页查询
-	QueryByPager(condition map[string]any, pager *Pager[T])
+	QueryByPager(condition map[string]any, pager *Pager[D])
 
 	// ModifyByID 通过主键修改数据
 	ModifyByID(condition map[string]any, update map[string]any) (int64, error)

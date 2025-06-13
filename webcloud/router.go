@@ -30,8 +30,8 @@ var defaultForbitColumns = []string{
 	"update_at",
 }
 
-type BaseRouter[ID IDType, S, M, Q, T any] struct {
-	baseBizService BaseBizService[ID, S, M, Q, T]
+type BaseRouter[ID IDType, S, M, Q, D any] struct {
+	baseBizService BaseBizService[ID, S, M, Q, D]
 
 	// 权限控制
 	authorityFetch AuthorityFetch[ID]
@@ -57,7 +57,7 @@ func structNames2Columns(structName []string) []string {
 // 为解决零值保存/新增/查询的问题，基础Router的默认动作均将请求参数通过转换为map[jsonKey]jsonValue的形式向后传递参数
 // 但这样会增加请求方自由度，出现恶意的请求编辑的jsonKey字段作为数据库直接交互的字段，基础Router根据不同的结构体所具有的字段来限定
 // **不要将不能更新的字段用于设置在结构体中**
-func NewBaseRouter[ID IDType, S, M, Q, T any](baseBizService BaseBizService[ID, S, M, Q, T]) *BaseRouter[ID, S, M, Q, T] {
+func NewBaseRouter[ID IDType, S, M, Q, D any](baseBizService BaseBizService[ID, S, M, Q, D]) *BaseRouter[ID, S, M, Q, D] {
 	var q Q
 	var m M
 	var s S
@@ -75,7 +75,7 @@ func NewBaseRouter[ID IDType, S, M, Q, T any](baseBizService BaseBizService[ID, 
 		panic(err)
 	}
 
-	return &BaseRouter[ID, S, M, Q, T]{
+	return &BaseRouter[ID, S, M, Q, D]{
 		baseBizService: baseBizService,
 		modifyAllowedColumns: coll.SliceFilter(structNames2Columns(modifyFieldNames), func(field string) bool {
 			return !coll.SliceContains(defaultForbitColumns, field)
@@ -90,8 +90,8 @@ func NewBaseRouter[ID IDType, S, M, Q, T any](baseBizService BaseBizService[ID, 
 // NewBaseRouterWithAuthority 创建基础路由 自动携带数据权限控制
 // authorityFetch 提供获取授权信息的接口
 // column 数据权限控制字段
-func NewBaseRouterWithAuthority[ID IDType, S, M, Q, T any](baseBizService BaseBizService[ID, S, M, Q, T], authorityFetch AuthorityFetch[ID], field string) *BaseRouter[ID, S, M, Q, T] {
-	router := NewBaseRouter[ID, S, M, Q, T](baseBizService)
+func NewBaseRouterWithAuthority[ID IDType, S, M, Q, D any](baseBizService BaseBizService[ID, S, M, Q, D], authorityFetch AuthorityFetch[ID], field string) *BaseRouter[ID, S, M, Q, D] {
+	router := NewBaseRouter[ID, S, M, Q, D](baseBizService)
 	router.authorityFetch = authorityFetch
 	router.authorityCheck = true
 	router.authorityField = field
@@ -102,7 +102,7 @@ func NewBaseRouterWithAuthority[ID IDType, S, M, Q, T any](baseBizService BaseBi
 }
 
 // ConvertJsonToMap 将json转换成map
-func (b *BaseRouter[ID, S, M, Q, T]) ConvertJsonToMap(request *ginstarter.Request, m mode) (map[string]any, error) {
+func (b *BaseRouter[ID, S, M, Q, D]) ConvertJsonToMap(request *ginstarter.Request, m mode) (map[string]any, error) {
 	var param map[string]any
 	rawBytes, err := request.GetRawBodyData()
 	if err != nil {
@@ -119,7 +119,7 @@ func (b *BaseRouter[ID, S, M, Q, T]) ConvertJsonToMap(request *ginstarter.Reques
 }
 
 // checkField 安全检查
-func (b *BaseRouter[ID, S, M, Q, T]) checkField(param map[string]any, m mode) bool {
+func (b *BaseRouter[ID, S, M, Q, D]) checkField(param map[string]any, m mode) bool {
 	var mathRule []string
 	switch m {
 	case save:
@@ -140,7 +140,7 @@ func (b *BaseRouter[ID, S, M, Q, T]) checkField(param map[string]any, m mode) bo
 }
 
 // SetAuthorityLimit 针对于需要数据权限控制的路由，设置数据权限控制字段
-func (b *BaseRouter[ID, S, M, Q, T]) SetAuthorityLimit(request *ginstarter.Request, paramPtr any) (bool, error) {
+func (b *BaseRouter[ID, S, M, Q, D]) SetAuthorityLimit(request *ginstarter.Request, paramPtr any) (bool, error) {
 	if b.authorityCheck {
 		authority := b.GetAuthorityData(request)
 		if authority == nil {
@@ -155,7 +155,7 @@ func (b *BaseRouter[ID, S, M, Q, T]) SetAuthorityLimit(request *ginstarter.Reque
 }
 
 // RegisterBaseHandler 注册基础路由
-func (b *BaseRouter[ID, S, M, Q, T]) RegisterBaseHandler(router *ginstarter.RouterWrapper, baseRouter *BaseRouter[ID, S, M, Q, T]) {
+func (b *BaseRouter[ID, S, M, Q, D]) RegisterBaseHandler(router *ginstarter.RouterWrapper, baseRouter *BaseRouter[ID, S, M, Q, D]) {
 	router.POST1("save", []string{gin.MIMEJSON}, baseRouter.save())
 	// 通过主键查询单条数据
 	router.GET("by-id/:id", baseRouter.queryById())
@@ -172,7 +172,7 @@ func (b *BaseRouter[ID, S, M, Q, T]) RegisterBaseHandler(router *ginstarter.Rout
 }
 
 // GetAuthorityData 获取当前请求的认证信息
-func (b *BaseRouter[ID, S, M, Q, T]) GetAuthorityData(request *ginstarter.Request) Authority[ID] {
+func (b *BaseRouter[ID, S, M, Q, D]) GetAuthorityData(request *ginstarter.Request) Authority[ID] {
 	if b.authorityFetch == nil {
 		logger.Logrus().Warningln("not set authority fetch method")
 		return nil
@@ -182,7 +182,7 @@ func (b *BaseRouter[ID, S, M, Q, T]) GetAuthorityData(request *ginstarter.Reques
 
 // 基础CRUD
 
-func (b *BaseRouter[ID, S, M, Q, T]) save() ginstarter.HandlerWrapper {
+func (b *BaseRouter[ID, S, M, Q, D]) save() ginstarter.HandlerWrapper {
 	return func(request *ginstarter.Request) (ginstarter.Response, error) {
 		var param S
 		request.MustBindBodyAuto(&param)
@@ -193,7 +193,7 @@ func (b *BaseRouter[ID, S, M, Q, T]) save() ginstarter.HandlerWrapper {
 		if !pass {
 			return ginstarter.RespRestUnAuthorized(), nil
 		}
-		id, err := b.baseBizService.Save(param)
+		id, err := b.baseBizService.Save(&param)
 		if err != nil {
 			logger.Logrus().Errorln("cant save:", param, err)
 			return nil, err
@@ -202,7 +202,7 @@ func (b *BaseRouter[ID, S, M, Q, T]) save() ginstarter.HandlerWrapper {
 	}
 }
 
-func (b *BaseRouter[ID, S, M, Q, T]) queryById() ginstarter.HandlerWrapper {
+func (b *BaseRouter[ID, S, M, Q, D]) queryById() ginstarter.HandlerWrapper {
 	return func(request *ginstarter.Request) (ginstarter.Response, error) {
 		id, err := CovertStringToID[ID](request.GetPathParam("id"))
 		if err != nil {
@@ -216,19 +216,19 @@ func (b *BaseRouter[ID, S, M, Q, T]) queryById() ginstarter.HandlerWrapper {
 		if !flag {
 			return ginstarter.RespRestUnAuthorized(), nil
 		}
-		var t T
-		row, err := b.baseBizService.QueryByID(param, &t)
+		var d D
+		row, err := b.baseBizService.QueryByID(param, &d)
 		if err != nil {
 			return nil, err
 		}
 		if row > 0 {
-			return ginstarter.RespRestSuccess(t), nil
+			return ginstarter.RespRestSuccess(d), nil
 		}
 		return ginstarter.RespRestSuccess(), nil
 	}
 }
 
-func (b *BaseRouter[ID, S, M, Q, T]) query() ginstarter.HandlerWrapper {
+func (b *BaseRouter[ID, S, M, Q, D]) query() ginstarter.HandlerWrapper {
 	return func(request *ginstarter.Request) (ginstarter.Response, error) {
 		param, err := b.ConvertJsonToMap(request, query)
 		if err != nil {
@@ -241,19 +241,19 @@ func (b *BaseRouter[ID, S, M, Q, T]) query() ginstarter.HandlerWrapper {
 		if !flag {
 			return ginstarter.RespRestUnAuthorized(), nil
 		}
-		var t []*T
-		row, err := b.baseBizService.Query(param, &t)
+		var ds []*D
+		row, err := b.baseBizService.Query(param, &ds)
 		if err != nil {
 			return nil, err
 		}
 		if row == 0 {
 			return ginstarter.RespRestSuccess(), nil
 		}
-		return ginstarter.RespRestSuccess(t), nil
+		return ginstarter.RespRestSuccess(ds), nil
 	}
 }
 
-func (b *BaseRouter[ID, S, M, Q, T]) queryOne() ginstarter.HandlerWrapper {
+func (b *BaseRouter[ID, S, M, Q, D]) queryOne() ginstarter.HandlerWrapper {
 	return func(request *ginstarter.Request) (ginstarter.Response, error) {
 		param, err := b.ConvertJsonToMap(request, query)
 		if err != nil {
@@ -266,19 +266,19 @@ func (b *BaseRouter[ID, S, M, Q, T]) queryOne() ginstarter.HandlerWrapper {
 		if !flag {
 			return ginstarter.RespRestUnAuthorized(), nil
 		}
-		var t T
-		row, err := b.baseBizService.QueryOne(param, &t)
+		var d D
+		row, err := b.baseBizService.QueryOne(param, &d)
 		if err != nil {
 			return nil, err
 		}
 		if row == 0 {
 			return ginstarter.RespRestSuccess(), nil
 		}
-		return ginstarter.RespRestSuccess(t), nil
+		return ginstarter.RespRestSuccess(d), nil
 	}
 }
 
-func (b *BaseRouter[ID, S, M, Q, T]) queryByPage() ginstarter.HandlerWrapper {
+func (b *BaseRouter[ID, S, M, Q, D]) queryByPage() ginstarter.HandlerWrapper {
 	return func(request *ginstarter.Request) (ginstarter.Response, error) {
 		rawBytes, err := request.GetRawBodyData()
 		if err != nil {
@@ -295,7 +295,7 @@ func (b *BaseRouter[ID, S, M, Q, T]) queryByPage() ginstarter.HandlerWrapper {
 		if !exist {
 			return ginstarter.RespRestBadParameters("number required"), nil
 		}
-		pager := Pager[T]{
+		pager := Pager[D]{
 			Number: int(number),
 			Size:   int(size),
 		}
@@ -326,7 +326,7 @@ func (b *BaseRouter[ID, S, M, Q, T]) queryByPage() ginstarter.HandlerWrapper {
 	}
 }
 
-func (b *BaseRouter[ID, S, M, Q, T]) updateById() ginstarter.HandlerWrapper {
+func (b *BaseRouter[ID, S, M, Q, D]) updateById() ginstarter.HandlerWrapper {
 	return func(request *ginstarter.Request) (ginstarter.Response, error) {
 		id, err := CovertStringToID[ID](request.GetPathParam("id"))
 		if err != nil {
@@ -363,7 +363,7 @@ func (b *BaseRouter[ID, S, M, Q, T]) updateById() ginstarter.HandlerWrapper {
 	}
 }
 
-func (b *BaseRouter[ID, S, M, Q, T]) deleteById() ginstarter.HandlerWrapper {
+func (b *BaseRouter[ID, S, M, Q, D]) deleteById() ginstarter.HandlerWrapper {
 	return func(request *ginstarter.Request) (ginstarter.Response, error) {
 		id, err := CovertStringToID[ID](request.GetPathParam("id"))
 		if err != nil {

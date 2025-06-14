@@ -94,7 +94,7 @@ func NewBaseRouterWithAuthority[ID IDType, S, M, Q, D any](baseBizService BaseBi
 	router := NewBaseRouter[ID, S, M, Q, D](baseBizService)
 	router.authorityFetch = authorityFetch
 	router.authorityCheck = true
-	router.authorityDataLimitColumn = str.CamelToSnake(authorityDataLimitFieldName)
+	router.authorityDataLimitColumn = str.CamelToSnake(str.LowFirstChar(authorityDataLimitFieldName))
 	if !coll.SliceContains(router.queryAllowedColumns, authorityDataLimitFieldName) {
 		router.queryAllowedColumns = append(router.queryAllowedColumns, authorityDataLimitFieldName)
 	}

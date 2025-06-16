@@ -136,7 +136,7 @@ func (b *BaseRouter[ID, S, M, Q, D]) checkField(param map[string]any, m mode) bo
 		return str.CamelToSnake(k), true
 	})
 	if !coll.SliceIsSubset(input, mathRule) {
-		logger.Logrus().Warningln("request field not allowed: ", input)
+		logger.Logrus().Warningln("some request field not allowed, all request field : ", input)
 		return false
 	}
 	return true
@@ -389,10 +389,13 @@ func (b *BaseRouter[ID, S, M, Q, D]) deleteById() ginstarter.HandlerWrapper {
 		if !flag {
 			return ginstarter.RespRestUnAuthorized(), nil
 		}
-		_, err = b.baseBizService.RemoveByID(param)
+		row, err := b.baseBizService.RemoveByID(param)
 		if err != nil {
 			return nil, err
 		}
-		return ginstarter.RespRestSuccess(), nil
+		if row > 0 {
+			return ginstarter.RespRestSuccess(), nil
+		}
+		return ginstarter.RespRestBadParameters(), nil
 	}
 }

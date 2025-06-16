@@ -3,7 +3,7 @@ module github.com/golang-acexy/cloud-web
 go 1.23.5
 
 require (
-	github.com/acexy/golang-toolkit v0.0.49-0.20250613071635-e8e796ca2e08
+	github.com/acexy/golang-toolkit v0.0.49-0.20250616080607-dd91e26e3fca
 	github.com/gin-gonic/gin v1.10.1
 	github.com/golang-acexy/starter-gin v0.1.24-0.20250614084803-bcd9a405d5a3
 	github.com/golang-acexy/starter-parent v0.1.15
@@ -20,6 +20,7 @@ require (
 	github.com/go-playground/validator/v10 v10.26.0 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/google/uuid v1.6.0 // indirect
+	github.com/iancoleman/strcase v0.3.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.10 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect

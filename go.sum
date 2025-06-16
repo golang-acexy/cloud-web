@@ -1,5 +1,5 @@
-github.com/acexy/golang-toolkit v0.0.49-0.20250613071635-e8e796ca2e08 h1:BekDCzZr4O+hio8WVsvoO9mG3zvO0Uxc6ck4+lLx+R8=
-github.com/acexy/golang-toolkit v0.0.49-0.20250613071635-e8e796ca2e08/go.mod h1:uuh/WogCDG3FXg1TR8X2yTg6oTVB9io/Xn1iGtYJ9U4=
+github.com/acexy/golang-toolkit v0.0.49-0.20250616080607-dd91e26e3fca h1:diw++pxvWFmCrCLNEhPQtvVyV1QpoQmiraRMSTx8GxI=
+github.com/acexy/golang-toolkit v0.0.49-0.20250616080607-dd91e26e3fca/go.mod h1:XXGTXOj42+WbQfnYlSHwSjW4RGC20uXXZenKvM5Y3fM=
 github.com/bytedance/sonic v1.13.3 h1:MS8gmaH16Gtirygw7jV91pDCN33NyMrPbN7qiYhEsF0=
 github.com/bytedance/sonic v1.13.3/go.mod h1:o68xyaF9u2gvVBuGHPlUVCy+ZfmNNO5ETf1+KgkJhz4=
 github.com/bytedance/sonic/loader v0.1.1/go.mod h1:ncP89zfokxS5LZrJxl5z0UJcsk4M4yY2JpfqGeCtNLU=
@@ -27,8 +27,6 @@ github.com/go-playground/validator/v10 v10.26.0 h1:SP05Nqhjcvz81uJaRfEV0YBSSSGMc
 github.com/go-playground/validator/v10 v10.26.0/go.mod h1:I5QpIEbmr8On7W0TktmJAumgzX4CA1XNl4ZmDuVHKKo=
 github.com/goccy/go-json v0.10.5 h1:Fq85nIqj+gXn/S5ahsiTlK3TmC85qgirsdTP/+DeaC4=
 github.com/goccy/go-json v0.10.5/go.mod h1:oq7eo15ShAhp70Anwd5lgX2pLfOS3QCiwU/PULtXL6M=
-github.com/golang-acexy/starter-gin v0.1.24-0.20250611110638-1f0fcda9ee08 h1:ag9vl4nY7ohjegUM8gEU6cxyTMsyUBwYJdbLogI+ZxE=
-github.com/golang-acexy/starter-gin v0.1.24-0.20250611110638-1f0fcda9ee08/go.mod h1:hGA64C/qIxIcWbFj/ci0dKgCZ+TlEUlNMehC0IihZN4=
 github.com/golang-acexy/starter-gin v0.1.24-0.20250614084803-bcd9a405d5a3 h1:I5quQs6GBoT9ZNrbRSluqalDJW60+a4WO/hQCVsOUsg=
 github.com/golang-acexy/starter-gin v0.1.24-0.20250614084803-bcd9a405d5a3/go.mod h1:wst4LlYpfRqjyGe+PzHSgfh9RLXR97sX5GExMwuWb4s=
 github.com/golang-acexy/starter-parent v0.1.15 h1:poaYgB7hNXU1/jgOZrj78if27E+Gd1FTlaupR9qNLnE=
@@ -38,6 +36,8 @@ github.com/google/go-cmp v0.5.5/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/
 github.com/google/gofuzz v1.0.0/go.mod h1:dBl0BpW6vV/+mYPU4Po3pmUjxk6FQPldtuIdl/M65Eg=
 github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
 github.com/google/uuid v1.6.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
+github.com/iancoleman/strcase v0.3.0 h1:nTXanmYxhfFAMjZL34Ov6gkzEsSJZ5DbhxWjvSASxEI=
+github.com/iancoleman/strcase v0.3.0/go.mod h1:iwCmte+B7n89clKwxIoIXy/HfoL7AsD47ZCWhYzw7ho=
 github.com/json-iterator/go v1.1.12 h1:PV8peI4a0ysnczrg+LtxykD8LfKY9ML6u2jnxaEnrnM=
 github.com/json-iterator/go v1.1.12/go.mod h1:e30LSqwooZae/UwlEbR2852Gd8hjQvJoHmT4TnhNGBo=
 github.com/klauspost/cpuid/v2 v2.0.9/go.mod h1:FInQzS24/EEf25PyTYn52gqo7WaD8xa0213Md/qVLRg=

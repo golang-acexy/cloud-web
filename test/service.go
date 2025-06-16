@@ -5,6 +5,16 @@ import "github.com/golang-acexy/cloud-web/webcloud"
 type UserBizService[ID webcloud.IDType, S, M, Q, D any] struct {
 }
 
+func (u UserBizService[ID, S, M, Q, D]) MaxQueryCount() int {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (u UserBizService[ID, S, M, Q, D]) DefaultOrderBySQL() []string {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (u UserBizService[ID, S, M, Q, D]) Save(save *S) (ID, error) {
 	//TODO implement me
 	panic("implement me")
@@ -30,7 +40,7 @@ func (u UserBizService[ID, S, M, Q, D]) QueryByPager(condition map[string]any, p
 	panic("implement me")
 }
 
-func (u UserBizService[ID, S, M, Q, D]) ModifyByID(condition map[string]any, update map[string]any) (int64, error) {
+func (u UserBizService[ID, S, M, Q, D]) ModifyByID(update, condition map[string]any) (int64, error) {
 	//TODO implement me
 	panic("implement me")
 }

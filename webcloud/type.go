@@ -60,6 +60,12 @@ func CovertStringToID[ID IDType](value string) (ID, error) {
 
 type BaseBizService[ID IDType, S, M, Q, D any] interface {
 
+	// MaxQueryCount 批量条件查询时，默认最大查询数量
+	MaxQueryCount() int
+
+	// DefaultOrderBySQL 默认排序字段
+	DefaultOrderBySQL() []string
+
 	// Save 保存数据
 	Save(save *S) (ID, error)
 

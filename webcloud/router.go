@@ -35,7 +35,7 @@ type BaseRouter[ID IDType, S, M, Q, D any] struct {
 
 	// 权限控制
 	authorityFetch           AuthorityFetch[ID]
-	authorityCheck           bool
+	authorityValidate        bool
 	authorityDataLimitColumn string // 权限数据控制的数据库字段
 
 	// 字段安全设置
@@ -93,7 +93,7 @@ func NewBaseRouter[ID IDType, S, M, Q, D any](baseBizService BaseBizService[ID, 
 func NewBaseRouterWithAuthority[ID IDType, S, M, Q, D any](baseBizService BaseBizService[ID, S, M, Q, D], authorityFetch AuthorityFetch[ID], authorityDataLimitFieldName string) *BaseRouter[ID, S, M, Q, D] {
 	router := NewBaseRouter[ID, S, M, Q, D](baseBizService)
 	router.authorityFetch = authorityFetch
-	router.authorityCheck = true
+	router.authorityValidate = true
 	router.authorityDataLimitColumn = str.CamelToSnake(str.LowFirstChar(authorityDataLimitFieldName))
 	if !coll.SliceContains(router.queryAllowedColumns, authorityDataLimitFieldName) {
 		router.queryAllowedColumns = append(router.queryAllowedColumns, authorityDataLimitFieldName)
@@ -101,7 +101,8 @@ func NewBaseRouterWithAuthority[ID IDType, S, M, Q, D any](baseBizService BaseBi
 	return router
 }
 
-// ConvertJsonToMap 将json转换成map 注意，key为自动转换成数据库字段名
+// ConvertJsonToMap 将json转换成map
+// 同时检查请求的字段是否允许 注意，key为自动转换成数据库字段名
 func (b *BaseRouter[ID, S, M, Q, D]) ConvertJsonToMap(request *ginstarter.Request, m mode) (map[string]any, error) {
 	var param map[string]any
 	rawBytes, err := request.GetRawBodyData()
@@ -143,7 +144,7 @@ func (b *BaseRouter[ID, S, M, Q, D]) checkField(param map[string]any, m mode) bo
 
 // SetAuthorityLimitStruct 针对于需要数据权限控制的路由，设置数据权限控制字段
 func (b *BaseRouter[ID, S, M, Q, D]) SetAuthorityLimitStruct(request *ginstarter.Request, paramPtr any) (bool, error) {
-	if b.authorityCheck {
+	if b.authorityValidate {
 		authority := b.GetAuthorityData(request)
 		if authority == nil {
 			return false, nil
@@ -160,8 +161,9 @@ func (b *BaseRouter[ID, S, M, Q, D]) SetAuthorityLimitStruct(request *ginstarter
 }
 
 // SetAuthorityLimitMap 针对于需要数据权限控制的路由，设置数据权限控制字段
+// 需传入数据库字段名
 func (b *BaseRouter[ID, S, M, Q, D]) SetAuthorityLimitMap(request *ginstarter.Request, param map[string]any) bool {
-	if b.authorityCheck {
+	if b.authorityValidate {
 		authority := b.GetAuthorityData(request)
 		if authority == nil {
 			return false
@@ -324,6 +326,9 @@ func (b *BaseRouter[ID, S, M, Q, D]) queryByPage() ginstarter.HandlerWrapper {
 			if !b.checkField(param, query) {
 				return ginstarter.RespRestBadParameters(), nil
 			}
+			param = coll.MapCollect(param, func(k string, v any) (string, any) {
+				return str.CamelToSnake(k), v
+			})
 			flag := b.SetAuthorityLimitMap(request, param)
 			if !flag {
 				return ginstarter.RespRestUnAuthorized(), nil

@@ -64,7 +64,7 @@ type BaseBizService[ID IDType, S, M, Q, D any] interface {
 	MaxQueryCount() int
 
 	// DefaultOrderBySQL 默认排序字段
-	DefaultOrderBySQL() []string
+	DefaultOrderBySQL() string
 
 	// Save 保存数据
 	Save(save *S) (ID, error)

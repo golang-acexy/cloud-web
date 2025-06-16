@@ -10,7 +10,7 @@ func (u UserBizService[ID, S, M, Q, D]) MaxQueryCount() int {
 	panic("implement me")
 }
 
-func (u UserBizService[ID, S, M, Q, D]) DefaultOrderBySQL() []string {
+func (u UserBizService[ID, S, M, Q, D]) DefaultOrderBySQL() string {
 	//TODO implement me
 	panic("implement me")
 }

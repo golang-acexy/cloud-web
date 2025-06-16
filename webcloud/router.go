@@ -251,10 +251,7 @@ func (b *BaseRouter[ID, S, M, Q, D]) query() ginstarter.HandlerWrapper {
 		if err != nil {
 			return ginstarter.RespRestBadParameters(), nil
 		}
-		flag, err := b.SetAuthorityLimitStruct(request, param)
-		if err != nil {
-			return nil, err
-		}
+		flag := b.SetAuthorityLimitMap(request, param)
 		if !flag {
 			return ginstarter.RespRestUnAuthorized(), nil
 		}
@@ -276,10 +273,7 @@ func (b *BaseRouter[ID, S, M, Q, D]) queryOne() ginstarter.HandlerWrapper {
 		if err != nil {
 			return ginstarter.RespRestBadParameters(), nil
 		}
-		flag, err := b.SetAuthorityLimitStruct(request, param)
-		if err != nil {
-			return nil, err
-		}
+		flag := b.SetAuthorityLimitMap(request, param)
 		if !flag {
 			return ginstarter.RespRestUnAuthorized(), nil
 		}
@@ -330,10 +324,7 @@ func (b *BaseRouter[ID, S, M, Q, D]) queryByPage() ginstarter.HandlerWrapper {
 			if !b.checkField(param, query) {
 				return ginstarter.RespRestBadParameters(), nil
 			}
-			flag, err := b.SetAuthorityLimitStruct(request, param)
-			if err != nil {
-				return nil, err
-			}
+			flag := b.SetAuthorityLimitMap(request, param)
 			if !flag {
 				return ginstarter.RespRestUnAuthorized(), nil
 			}
@@ -367,10 +358,7 @@ func (b *BaseRouter[ID, S, M, Q, D]) updateById() ginstarter.HandlerWrapper {
 		}
 
 		param := map[string]any{"id": id}
-		flag, err := b.SetAuthorityLimitStruct(request, param)
-		if err != nil {
-			return nil, err
-		}
+		flag := b.SetAuthorityLimitMap(request, param)
 		if !flag {
 			return ginstarter.RespRestUnAuthorized(), nil
 		}
@@ -389,7 +377,7 @@ func (b *BaseRouter[ID, S, M, Q, D]) deleteById() ginstarter.HandlerWrapper {
 			return nil, err
 		}
 		param := map[string]any{"id": id}
-		flag, err := b.SetAuthorityLimitStruct(request, param)
+		flag := b.SetAuthorityLimitMap(request, param)
 		if err != nil {
 			return nil, err
 		}

@@ -184,7 +184,7 @@ func (b *BaseRouter[ID, S, M, Q, D]) RegisterBaseHandler(router *ginstarter.Rout
 	// 通过条件查询多条数据
 	router.POST1("query", []string{gin.MIMEJSON}, baseRouter.query())
 	// 通过条件分页查询
-	router.POST1("query-by-page", []string{gin.MIMEJSON}, baseRouter.queryById())
+	router.POST1("query-by-page", []string{gin.MIMEJSON}, baseRouter.queryByPage())
 	// 通过主键更新数据
 	router.PUT1("by-id/:id", []string{gin.MIMEJSON}, baseRouter.updateById())
 	// 通过主键删除数据

@@ -178,19 +178,19 @@ func (b *BaseRouter[ID, S, M, Q, D]) SetAuthorityLimitMap(request *ginstarter.Re
 
 // RegisterBaseHandler 注册基础路由
 func (b *BaseRouter[ID, S, M, Q, D]) RegisterBaseHandler(router *ginstarter.RouterWrapper, baseRouter *BaseRouter[ID, S, M, Q, D]) {
-	router.POST1("save", []string{gin.MIMEJSON}, baseRouter.save())
+	router.POST1("save", []string{gin.MIMEJSON}, baseRouter.Save())
 	// 通过主键查询单条数据
-	router.GET("by-id/:id", baseRouter.queryById())
+	router.GET("by-id/:id", baseRouter.QueryById())
 	// 通过条件查询单条数据
-	router.POST1("query-one", []string{gin.MIMEJSON}, baseRouter.queryOne())
+	router.POST1("query-one", []string{gin.MIMEJSON}, baseRouter.QueryOne())
 	// 通过条件查询多条数据
-	router.POST1("query", []string{gin.MIMEJSON}, baseRouter.query())
+	router.POST1("query", []string{gin.MIMEJSON}, baseRouter.Query())
 	// 通过条件分页查询
-	router.POST1("query-by-page", []string{gin.MIMEJSON}, baseRouter.queryByPage())
+	router.POST1("query-by-page", []string{gin.MIMEJSON}, baseRouter.QueryByPage())
 	// 通过主键更新数据
-	router.PUT1("by-id/:id", []string{gin.MIMEJSON}, baseRouter.updateById())
+	router.PUT1("by-id/:id", []string{gin.MIMEJSON}, baseRouter.ModifyById())
 	// 通过主键删除数据
-	router.DELETE("by-id/:id", baseRouter.deleteById())
+	router.DELETE("by-id/:id", baseRouter.RemoveById())
 }
 
 // GetAuthorityData 获取当前请求的认证信息
@@ -204,7 +204,7 @@ func (b *BaseRouter[ID, S, M, Q, D]) GetAuthorityData(request *ginstarter.Reques
 
 // 基础CRUD
 
-func (b *BaseRouter[ID, S, M, Q, D]) save() ginstarter.HandlerWrapper {
+func (b *BaseRouter[ID, S, M, Q, D]) Save() ginstarter.HandlerWrapper {
 	return func(request *ginstarter.Request) (ginstarter.Response, error) {
 		var param S
 		request.MustBindBodyAuto(&param)
@@ -224,7 +224,7 @@ func (b *BaseRouter[ID, S, M, Q, D]) save() ginstarter.HandlerWrapper {
 	}
 }
 
-func (b *BaseRouter[ID, S, M, Q, D]) queryById() ginstarter.HandlerWrapper {
+func (b *BaseRouter[ID, S, M, Q, D]) QueryById() ginstarter.HandlerWrapper {
 	return func(request *ginstarter.Request) (ginstarter.Response, error) {
 		id, err := CovertStringToID[ID](request.GetPathParam("id"))
 		if err != nil {
@@ -247,7 +247,7 @@ func (b *BaseRouter[ID, S, M, Q, D]) queryById() ginstarter.HandlerWrapper {
 	}
 }
 
-func (b *BaseRouter[ID, S, M, Q, D]) query() ginstarter.HandlerWrapper {
+func (b *BaseRouter[ID, S, M, Q, D]) Query() ginstarter.HandlerWrapper {
 	return func(request *ginstarter.Request) (ginstarter.Response, error) {
 		param, err := b.ConvertJsonToMap(request, query)
 		if err != nil {
@@ -269,7 +269,7 @@ func (b *BaseRouter[ID, S, M, Q, D]) query() ginstarter.HandlerWrapper {
 	}
 }
 
-func (b *BaseRouter[ID, S, M, Q, D]) queryOne() ginstarter.HandlerWrapper {
+func (b *BaseRouter[ID, S, M, Q, D]) QueryOne() ginstarter.HandlerWrapper {
 	return func(request *ginstarter.Request) (ginstarter.Response, error) {
 		param, err := b.ConvertJsonToMap(request, query)
 		if err != nil {
@@ -291,7 +291,7 @@ func (b *BaseRouter[ID, S, M, Q, D]) queryOne() ginstarter.HandlerWrapper {
 	}
 }
 
-func (b *BaseRouter[ID, S, M, Q, D]) queryByPage() ginstarter.HandlerWrapper {
+func (b *BaseRouter[ID, S, M, Q, D]) QueryByPage() ginstarter.HandlerWrapper {
 	return func(request *ginstarter.Request) (ginstarter.Response, error) {
 		rawBytes, err := request.GetRawBodyData()
 		if err != nil {
@@ -342,7 +342,7 @@ func (b *BaseRouter[ID, S, M, Q, D]) queryByPage() ginstarter.HandlerWrapper {
 	}
 }
 
-func (b *BaseRouter[ID, S, M, Q, D]) updateById() ginstarter.HandlerWrapper {
+func (b *BaseRouter[ID, S, M, Q, D]) ModifyById() ginstarter.HandlerWrapper {
 	return func(request *ginstarter.Request) (ginstarter.Response, error) {
 		id, err := CovertStringToID[ID](request.GetPathParam("id"))
 		if err != nil {
@@ -375,7 +375,7 @@ func (b *BaseRouter[ID, S, M, Q, D]) updateById() ginstarter.HandlerWrapper {
 	}
 }
 
-func (b *BaseRouter[ID, S, M, Q, D]) deleteById() ginstarter.HandlerWrapper {
+func (b *BaseRouter[ID, S, M, Q, D]) RemoveById() ginstarter.HandlerWrapper {
 	return func(request *ginstarter.Request) (ginstarter.Response, error) {
 		id, err := CovertStringToID[ID](request.GetPathParam("id"))
 		if err != nil {

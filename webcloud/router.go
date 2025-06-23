@@ -361,7 +361,6 @@ func (b *BaseRouter[ID, S, M, Q, D]) ModifyById() ginstarter.HandlerWrapper {
 		if !b.checkField(update, modify) {
 			return ginstarter.RespRestBadParameters(), nil
 		}
-
 		param := map[string]any{"id": id}
 		flag := b.SetAuthorityLimitMap(request, param)
 		if !flag {
@@ -398,4 +397,25 @@ func (b *BaseRouter[ID, S, M, Q, D]) RemoveById() ginstarter.HandlerWrapper {
 		}
 		return ginstarter.RespRestBadParameters(), nil
 	}
+}
+
+// SimpleRouter 简单路由，不含数据库结构相关的方法
+type SimpleRouter[ID IDType] struct {
+	authorityFetch AuthorityFetch[ID]
+}
+
+// NewSimpleRouter 创建一个简单路由
+func NewSimpleRouter[ID IDType](authorityFetch AuthorityFetch[ID]) *SimpleRouter[ID] {
+	return &SimpleRouter[ID]{
+		authorityFetch: authorityFetch,
+	}
+}
+
+// GetAuthorityData 获取当前请求的认证信息
+func (s *SimpleRouter[ID]) GetAuthorityData(request *ginstarter.Request) Authority[ID] {
+	if s.authorityFetch == nil {
+		logger.Logrus().Warningln("not set authority fetch method")
+		return nil
+	}
+	return s.authorityFetch(request)
 }

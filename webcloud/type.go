@@ -16,8 +16,8 @@ type IDType interface {
 type Authority[ID IDType] interface {
 	// GetIdentityID 获取唯一标识
 	GetIdentityID() ID
-	// GetPlatformID 所属平台标识
-	GetPlatformID() Platform
+	// GetPlatform 所属平台标识
+	GetPlatform() Platform
 }
 
 // AuthorityFetch 获取权限信息

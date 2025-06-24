@@ -16,7 +16,7 @@ func (a AuthorityUser[ID]) GetIdentityID() uint64 {
 	return a.id
 }
 
-func (a AuthorityUser[ID]) GetPlatformID() webcloud.Platform {
+func (a AuthorityUser[ID]) GetPlatform() webcloud.Platform {
 	//TODO implement me
 	panic("implement me")
 }

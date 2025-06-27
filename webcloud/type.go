@@ -23,13 +23,20 @@ type Authority[ID IDType] interface {
 // AuthorityFetch 获取权限信息
 type AuthorityFetch[ID IDType] func(request *ginstarter.Request) Authority[ID]
 
-// Pager 分页信息
+// Pager 分页响应信息
 type Pager[T any] struct {
 	Records []*T  `json:"records"` // 响应数据
 	Total   int64 `json:"total"`   // 响应总记录数
 
 	Size   int `json:"size" form:"size"  binding:"required"`     // 请求每页记录数
 	Number int `json:"number" form:"number"  binding:"required"` // 请求页码 从1开始
+}
+
+// PagerDTO 分页查询信息
+type PagerDTO[T any] struct {
+	Size      int `json:"size" form:"size"  binding:"required"`     // 请求每页记录数
+	Number    int `json:"number" form:"number"  binding:"required"` // 请求页码 从1开始
+	Condition T   `json:"condition"`
 }
 
 // CovertStringToID 字符串类型转换为实际主键类型

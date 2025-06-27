@@ -104,7 +104,7 @@ type BaseBizService[ID IDType, S, M, Q, D any] interface {
 	QueryByCond(condition *Q) []*D
 
 	// QueryByPager 分页查询
-	QueryByPager(pager *PagerDTO[Q]) *Pager[D]
+	QueryByPager(pager *PagerDTO[*Q]) *Pager[*D]
 
 	// ModifyByID 根据主键修改数据
 	ModifyByID(id ID, updated *M) bool

@@ -76,21 +76,39 @@ type BaseBizService[ID IDType, S, M, Q, D any] interface {
 	// Save 保存数据
 	Save(save *S) (ID, error)
 
+	// BaseQueryByID 通过主键查询
+	BaseQueryByID(condition map[string]any, result *D) (int64, error)
+
+	// BaseQueryOne 通过条件查询一条数据
+	BaseQueryOne(condition map[string]any, result *D) (int64, error)
+
+	// BaseQuery 通过条件多条数据
+	BaseQuery(condition map[string]any, result *[]*D) (int64, error)
+
+	// BaseQueryByPager 分页查询
+	BaseQueryByPager(condition map[string]any, pager *Pager[D]) error
+
+	// BaseModifyByID 通过主键修改数据
+	BaseModifyByID(update, condition map[string]any) (int64, error)
+
+	// BaseRemoveByID 通过主键删除数据
+	BaseRemoveByID(condition map[string]any) (int64, error)
+
 	// QueryByID 通过主键查询
-	QueryByID(condition map[string]any, result *D) (int64, error)
+	QueryByID(id ID) *D
 
-	// QueryOne 通过条件查询一条数据
-	QueryOne(condition map[string]any, result *D) (int64, error)
+	// QueryOneByCond 通过条件查询一条数据
+	QueryOneByCond(condition *Q) *D
 
-	// Query 通过条件多条数据
-	Query(condition map[string]any, result *[]*D) (int64, error)
+	// QueryByCond 通过条件查询多条数据
+	QueryByCond(condition *Q) []*D
 
 	// QueryByPager 分页查询
-	QueryByPager(condition map[string]any, pager *Pager[D]) error
+	QueryByPager(pager *PagerDTO[Q]) *Pager[D]
 
-	// ModifyByID 通过主键修改数据
-	ModifyByID(update, condition map[string]any) (int64, error)
+	// ModifyByID 根据主键修改数据
+	ModifyByID(id ID, updated *M) bool
 
-	// RemoveByID 通过主键删除数据
-	RemoveByID(condition map[string]any) (int64, error)
+	// RemoveByID 根据主键删除数据
+	RemoveByID(id ID) bool
 }

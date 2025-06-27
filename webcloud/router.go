@@ -243,7 +243,7 @@ func (b *BaseRouter[ID, S, M, Q, D]) QueryById() ginstarter.HandlerWrapper {
 			return ginstarter.RespRestUnAuthorized(), nil
 		}
 		var d D
-		row, err := b.baseBizService.QueryByID(param, &d)
+		row, err := b.baseBizService.BaseQueryByID(param, &d)
 		if err != nil {
 			return nil, err
 		}
@@ -265,7 +265,7 @@ func (b *BaseRouter[ID, S, M, Q, D]) Query() ginstarter.HandlerWrapper {
 			return ginstarter.RespRestUnAuthorized(), nil
 		}
 		var ds []*D
-		row, err := b.baseBizService.Query(param, &ds)
+		row, err := b.baseBizService.BaseQuery(param, &ds)
 		if err != nil {
 			return nil, err
 		}
@@ -287,7 +287,7 @@ func (b *BaseRouter[ID, S, M, Q, D]) QueryOne() ginstarter.HandlerWrapper {
 			return ginstarter.RespRestUnAuthorized(), nil
 		}
 		var d D
-		row, err := b.baseBizService.QueryOne(param, &d)
+		row, err := b.baseBizService.BaseQueryOne(param, &d)
 		if err != nil {
 			return nil, err
 		}
@@ -341,7 +341,7 @@ func (b *BaseRouter[ID, S, M, Q, D]) QueryByPage() ginstarter.HandlerWrapper {
 				return ginstarter.RespRestUnAuthorized(), nil
 			}
 		}
-		err = b.baseBizService.QueryByPager(param, &pager)
+		err = b.baseBizService.BaseQueryByPager(param, &pager)
 		if err != nil {
 			return nil, err
 		}
@@ -373,7 +373,7 @@ func (b *BaseRouter[ID, S, M, Q, D]) ModifyById() ginstarter.HandlerWrapper {
 		if !flag {
 			return ginstarter.RespRestUnAuthorized(), nil
 		}
-		_, err = b.baseBizService.ModifyByID(update, param)
+		_, err = b.baseBizService.BaseModifyByID(update, param)
 		if err != nil {
 			return nil, err
 		}
@@ -395,7 +395,7 @@ func (b *BaseRouter[ID, S, M, Q, D]) RemoveById() ginstarter.HandlerWrapper {
 		if !flag {
 			return ginstarter.RespRestUnAuthorized(), nil
 		}
-		row, err := b.baseBizService.RemoveByID(param)
+		row, err := b.baseBizService.BaseRemoveByID(param)
 		if err != nil {
 			return nil, err
 		}
@@ -411,7 +411,7 @@ type SimpleRouter[ID IDType] struct {
 	authorityFetch AuthorityFetch[ID]
 }
 
-// NewSimpleRouter 创建一个简单路由
+// NewSimpleRouter 创建一个简单路由 该路由器仅含有快捷获取当前认证信息
 func NewSimpleRouter[ID IDType](authorityFetch AuthorityFetch[ID]) *SimpleRouter[ID] {
 	return &SimpleRouter[ID]{
 		authorityFetch: authorityFetch,

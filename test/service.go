@@ -20,32 +20,62 @@ func (u UserBizService[ID, S, M, Q, D]) Save(save *S) (ID, error) {
 	panic("implement me")
 }
 
-func (u UserBizService[ID, S, M, Q, D]) QueryByID(condition map[string]any, result *D) (int64, error) {
+func (u UserBizService[ID, S, M, Q, D]) BaseQueryByID(condition map[string]any, result *D) (int64, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (u UserBizService[ID, S, M, Q, D]) QueryOne(condition map[string]any, result *D) (int64, error) {
+func (u UserBizService[ID, S, M, Q, D]) BaseQueryOne(condition map[string]any, result *D) (int64, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (u UserBizService[ID, S, M, Q, D]) Query(condition map[string]any, result *[]*D) (int64, error) {
+func (u UserBizService[ID, S, M, Q, D]) BaseQuery(condition map[string]any, result *[]*D) (int64, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (u UserBizService[ID, S, M, Q, D]) QueryByPager(condition map[string]any, pager *webcloud.Pager[D]) error {
+func (u UserBizService[ID, S, M, Q, D]) BaseQueryByPager(condition map[string]any, pager *webcloud.Pager[D]) error {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (u UserBizService[ID, S, M, Q, D]) ModifyByID(update, condition map[string]any) (int64, error) {
+func (u UserBizService[ID, S, M, Q, D]) BaseModifyByID(update, condition map[string]any) (int64, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (u UserBizService[ID, S, M, Q, D]) RemoveByID(condition map[string]any) (int64, error) {
+func (u UserBizService[ID, S, M, Q, D]) BaseRemoveByID(condition map[string]any) (int64, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (u UserBizService[ID, S, M, Q, D]) QueryByID(id ID) *D {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (u UserBizService[ID, S, M, Q, D]) QueryOneByCond(condition *Q) *D {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (u UserBizService[ID, S, M, Q, D]) QueryByCond(condition *Q) []*D {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (u UserBizService[ID, S, M, Q, D]) QueryByPager(pager *webcloud.PagerDTO[Q]) *webcloud.Pager[D] {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (u UserBizService[ID, S, M, Q, D]) ModifyByID(id ID, updated *M) bool {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (u UserBizService[ID, S, M, Q, D]) RemoveByID(id ID) bool {
 	//TODO implement me
 	panic("implement me")
 }

@@ -194,10 +194,17 @@ func (b *BaseRouter[ID, S, M, Q, D]) RegisterBaseHandler(router *ginstarter.Rout
 }
 
 // GetAuthorityData 获取当前请求的认证信息
-func (b *BaseRouter[ID, S, M, Q, D]) GetAuthorityData(request *ginstarter.Request) Authority[ID] {
+func (b *BaseRouter[ID, S, M, Q, D]) GetAuthorityData(request *ginstarter.Request, notMust ...bool) Authority[ID] {
 	if b.authorityFetch == nil {
 		logger.Logrus().Warningln("not set authority fetch method")
 		return nil
+	}
+	result := b.authorityFetch(request)
+	if len(notMust) > 0 && notMust[0] {
+		return result
+	}
+	if result == nil {
+		request.Panic(ginstarter.StatusCodeUnauthorized, errors.New("Unauthorized Request"))
 	}
 	return b.authorityFetch(request)
 }

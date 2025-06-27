@@ -5,7 +5,7 @@ go 1.23.5
 require (
 	github.com/acexy/golang-toolkit v0.0.49-0.20250616080607-dd91e26e3fca
 	github.com/gin-gonic/gin v1.10.1
-	github.com/golang-acexy/starter-gin v0.1.24-0.20250614084803-bcd9a405d5a3
+	github.com/golang-acexy/starter-gin v0.1.24-0.20250627064252-c2228abb471d
 	github.com/golang-acexy/starter-parent v0.1.15
 )
 

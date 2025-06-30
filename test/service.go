@@ -35,7 +35,7 @@ func (u UserBizService[ID, S, M, Q, D]) BaseQuery(condition map[string]any, resu
 	panic("implement me")
 }
 
-func (u UserBizService[ID, S, M, Q, D]) BaseQueryByPager(condition map[string]any, pager *webcloud.Pager[D]) error {
+func (u UserBizService[ID, S, M, Q, D]) BaseQueryByPager(condition map[string]any, pager webcloud.Pager[D]) error {
 	//TODO implement me
 	panic("implement me")
 }
@@ -65,12 +65,17 @@ func (u UserBizService[ID, S, M, Q, D]) QueryByCond(condition *Q) []*D {
 	panic("implement me")
 }
 
-func (u UserBizService[ID, S, M, Q, D]) QueryByPager(pager *webcloud.PagerDTO[Q]) *webcloud.Pager[D] {
+func (u UserBizService[ID, S, M, Q, D]) QueryByPager(pager webcloud.PagerDTO[Q]) webcloud.Pager[D] {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (u UserBizService[ID, S, M, Q, D]) ModifyByID(id ID, updated *M) bool {
+func (u UserBizService[ID, S, M, Q, D]) ModifyByID(updated *M) bool {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (u UserBizService[ID, S, M, Q, D]) ModifyByIDExcludeZeroField(updated *M) bool {
 	//TODO implement me
 	panic("implement me")
 }

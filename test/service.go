@@ -80,7 +80,7 @@ func (u UserBizService[ID, S, M, Q, D]) ModifyByIDExcludeZeroField(updated *M) b
 	panic("implement me")
 }
 
-func (u UserBizService[ID, S, M, Q, D]) ModifyByIdUseMap(updated map[string]any) bool {
+func (u UserBizService[ID, S, M, Q, D]) ModifyByIdUseMap(updated map[string]any, id ID) bool {
 	//TODO implement me
 	panic("implement me")
 }

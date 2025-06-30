@@ -113,7 +113,7 @@ type BaseBizService[ID IDType, S, M, Q, D any] interface {
 	ModifyByIDExcludeZeroField(updated *M) bool
 
 	// ModifyByIdUseMap 根据主键修改数据
-	ModifyByIdUseMap(updated map[string]any) bool
+	ModifyByIdUseMap(updated map[string]any, id ID) bool
 
 	// RemoveByID 根据主键删除数据
 	RemoveByID(id ID) bool

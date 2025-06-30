@@ -112,6 +112,9 @@ type BaseBizService[ID IDType, S, M, Q, D any] interface {
 	// ModifyByIDExcludeZeroField 根据主键修改数据，忽略值为零的字段
 	ModifyByIDExcludeZeroField(updated *M) bool
 
+	// ModifyByIdUseMap 根据主键修改数据
+	ModifyByIdUseMap(updated map[string]any) bool
+
 	// RemoveByID 根据主键删除数据
 	RemoveByID(id ID) bool
 }

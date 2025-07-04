@@ -117,4 +117,10 @@ type BaseBizService[ID IDType, S, M, Q, D any] interface {
 
 	// RemoveByID 根据主键删除数据
 	RemoveByID(id ID) bool
+
+	// RemoveByCond 根据条件删除数据
+	RemoveByCond(condition *D) bool
+
+	// RemoveByMap 根据条件删除数据
+	RemoveByMap(condition map[string]any) bool
 }

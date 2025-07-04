@@ -89,3 +89,13 @@ func (u UserBizService[ID, S, M, Q, D]) RemoveByID(id ID) bool {
 	//TODO implement me
 	panic("implement me")
 }
+
+func (u UserBizService[ID, S, M, Q, D]) RemoveByCond(condition *D) bool {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (u UserBizService[ID, S, M, Q, D]) RemoveByMap(condition map[string]any) bool {
+	//TODO implement me
+	panic("implement me")
+}

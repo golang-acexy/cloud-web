@@ -321,7 +321,11 @@ func (b *BaseRouter[ID, S, M, Q, D]) QueryByPage() ginstarter.HandlerWrapper {
 		}
 		condition := paramJson.Get("condition")
 		rawConditionJson := condition.RawJsonString()
-		var param map[string]any
+		param := make(map[string]any)
+		flag := b.SetAuthorityLimitMap(request, param)
+		if !flag {
+			return ginstarter.RespRestUnAuthorized(), nil
+		}
 		if rawConditionJson != "" {
 			if err != nil {
 				return nil, err
@@ -336,10 +340,6 @@ func (b *BaseRouter[ID, S, M, Q, D]) QueryByPage() ginstarter.HandlerWrapper {
 			param = coll.MapCollect(param, func(k string, v any) (string, any) {
 				return str.CamelToSnake(k), v
 			})
-			flag := b.SetAuthorityLimitMap(request, param)
-			if !flag {
-				return ginstarter.RespRestUnAuthorized(), nil
-			}
 		}
 		err = b.baseBizService.BaseQueryByPager(param, pager)
 		if err != nil {

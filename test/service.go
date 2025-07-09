@@ -35,7 +35,7 @@ func (u UserBizService[ID, S, M, Q, D]) BaseQuery(condition map[string]any, resu
 	panic("implement me")
 }
 
-func (u UserBizService[ID, S, M, Q, D]) BaseQueryByPager(condition map[string]any, pager webcloud.Pager[D]) error {
+func (u UserBizService[ID, S, M, Q, D]) BaseQueryByPager(condition map[string]any, pager *webcloud.Pager[D]) error {
 	//TODO implement me
 	panic("implement me")
 }

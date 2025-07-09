@@ -338,7 +338,7 @@ func (b *BaseRouter[ID, S, M, Q, D]) QueryByPage() ginstarter.HandlerWrapper {
 				return str.CamelToSnake(k), v
 			})
 		}
-		err = b.baseBizService.BaseQueryByPager(param, pager)
+		err = b.baseBizService.BaseQueryByPager(param, &pager)
 		if err != nil {
 			return nil, err
 		}

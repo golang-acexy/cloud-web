@@ -168,9 +168,6 @@ func (b *BaseRouter[ID, S, M, Q, D]) SetAuthorityLimitMap(request *ginstarter.Re
 		if authority == nil {
 			return false
 		}
-		if len(param) == 0 {
-			param = make(map[string]any)
-		}
 		param[str.CamelToSnake(b.authorityDataLimitColumn)] = authority.GetIdentityID()
 	}
 	return true

@@ -428,5 +428,5 @@ func (s *SimpleRouter[ID]) GetAuthorityData(request *ginstarter.Request, notMust
 	if result == nil {
 		request.Panic(ginstarter.StatusCodeUnauthorized, errors.New("Unauthorized Request"))
 	}
-	return s.authorityFetch(request)
+	return result
 }

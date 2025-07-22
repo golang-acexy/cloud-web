@@ -416,13 +416,13 @@ func NewSimpleRouter[ID IDType](authorityFetch AuthorityFetch[ID]) *SimpleRouter
 }
 
 // GetAuthorityData 获取当前请求的认证信息
-func (s *SimpleRouter[ID]) GetAuthorityData(request *ginstarter.Request, notMust ...bool) Authority[ID] {
+func (s *SimpleRouter[ID]) GetAuthorityData(request *ginstarter.Request, notRequired ...bool) Authority[ID] {
 	if s.authorityFetch == nil {
 		logger.Logrus().Warningln("not set authority fetch method")
 		return nil
 	}
 	result := s.authorityFetch(request)
-	if len(notMust) > 0 && notMust[0] {
+	if len(notRequired) > 0 && notRequired[0] {
 		return result
 	}
 	if result == nil {

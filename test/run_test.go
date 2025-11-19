@@ -2,10 +2,11 @@ package test
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/acexy/golang-toolkit/sys"
 	"github.com/golang-acexy/starter-gin/ginstarter"
 	"github.com/golang-acexy/starter-parent/parent"
-	"testing"
 )
 
 var starterLoader *parent.StarterLoader
@@ -21,7 +22,6 @@ func init() {
 					NewUsrUserRouter(),
 					NewAdmUserRouter(),
 				},
-				EnableGoroutineTraceIdResponse: true,
 			},
 		},
 	})

@@ -36,7 +36,7 @@ type Pager[T any] struct {
 // PagerDTO 分页查询信息
 type PagerDTO[T any] struct {
 	Size      int `json:"size" form:"size"  binding:"required,gte=1,lte=2000"` // 请求每页记录数
-	Number    int `json:"number" form:"number"  binding:"required"`            // 请求页码 从1开始
+	Number    int `json:"number" form:"number"  binding:"required,gte=1"`      // 请求页码 从1开始
 	Condition T   `json:"condition"`
 }
 

@@ -20,6 +20,8 @@ const (
 	save
 )
 
+var ErrUnAuthority = errors.New("unauthorized request")
+
 // 以下常用的字段用于安全设置，在写场景下强制自动忽略
 var defaultForbitColumns = []string{
 	"id",
@@ -192,17 +194,17 @@ func (b *BaseRouter[ID, S, M, Q, D]) RegisterBaseHandler(router *ginstarter.Rout
 }
 
 // GetAuthorityData 获取当前请求的认证信息
-func (b *BaseRouter[ID, S, M, Q, D]) GetAuthorityData(request *ginstarter.Request, notMust ...bool) Authority[ID] {
+func (b *BaseRouter[ID, S, M, Q, D]) GetAuthorityData(request *ginstarter.Request, notRequired ...bool) Authority[ID] {
 	if b.authorityFetch == nil {
-		logger.Logrus().Warningln("not set authority fetch method")
+		logger.Logrus().Warningln("miss authority fetch method")
 		return nil
 	}
 	result := b.authorityFetch(request)
-	if len(notMust) > 0 && notMust[0] {
+	if len(notRequired) > 0 && notRequired[0] {
 		return result
 	}
 	if result == nil {
-		request.Panic(ginstarter.StatusCodeUnauthorized, errors.New("Unauthorized Request"))
+		request.Panic(ginstarter.StatusCodeUnauthorized, ErrUnAuthority)
 	}
 	return b.authorityFetch(request)
 }
@@ -353,7 +355,6 @@ func (b *BaseRouter[ID, S, M, Q, D]) ModifyById() ginstarter.HandlerWrapper {
 		if err != nil {
 			return nil, err
 		}
-
 		var update map[string]any
 		rawBytes, err := request.GetRawBodyData()
 		if err != nil {
@@ -419,7 +420,7 @@ func NewSimpleRouter[ID IDType](authorityFetch AuthorityFetch[ID]) *SimpleRouter
 // GetAuthorityData 获取当前请求的认证信息
 func (s *SimpleRouter[ID]) GetAuthorityData(request *ginstarter.Request, notRequired ...bool) Authority[ID] {
 	if s.authorityFetch == nil {
-		logger.Logrus().Warningln("not set authority fetch method")
+		logger.Logrus().Warningln("miss authority fetch method")
 		return nil
 	}
 	result := s.authorityFetch(request)
@@ -427,7 +428,7 @@ func (s *SimpleRouter[ID]) GetAuthorityData(request *ginstarter.Request, notRequ
 		return result
 	}
 	if result == nil {
-		request.Panic(ginstarter.StatusCodeUnauthorized, errors.New("Unauthorized Request"))
+		request.Panic(ginstarter.StatusCodeUnauthorized, ErrUnAuthority)
 	}
 	return result
 }

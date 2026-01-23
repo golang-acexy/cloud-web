@@ -330,7 +330,7 @@ func (b *BaseRouter[ID, S, M, Q, D]) QueryByPage() ginstarter.HandlerWrapper {
 			if err != nil {
 				return nil, err
 			}
-			json.ParseJsonPanic(rawConditionJson, &param)
+			json.ParseStringPanic(rawConditionJson, &param)
 			if len(param) == 0 {
 				return ginstarter.RespRestBadParameters(), nil
 			}

@@ -1,101 +1,148 @@
 package test
 
-import "github.com/golang-acexy/cloud-web/webcloud"
+import (
+	"errors"
+	"sync"
 
-type UserBizService[ID webcloud.IDType, S, M, Q, D any] struct {
+	"github.com/golang-acexy/cloud-web/webcloud"
+)
+
+var errServiceFailure = errors.New("service failure")
+
+type UserBizService struct {
+	lock          sync.Mutex
+	lastSave      UserSDTO
+	lastCondition map[string]any
+	lastUpdate    map[string]any
 }
 
-func (u UserBizService[ID, S, M, Q, D]) MaxQueryCount() int {
-	//TODO implement me
-	panic("implement me")
+func (u *UserBizService) reset() {
+	u.lock.Lock()
+	defer u.lock.Unlock()
+	u.lastSave = UserSDTO{}
+	u.lastCondition = nil
+	u.lastUpdate = nil
 }
 
-func (u UserBizService[ID, S, M, Q, D]) DefaultOrderBySQL() string {
-	//TODO implement me
-	panic("implement me")
+func cloneMap(source map[string]any) map[string]any {
+	result := make(map[string]any, len(source))
+	for key, value := range source {
+		result[key] = value
+	}
+	return result
 }
 
-func (u UserBizService[ID, S, M, Q, D]) Save(save *S) (ID, error) {
-	//TODO implement me
-	panic("implement me")
+func (u *UserBizService) recordCondition(condition map[string]any) {
+	u.lock.Lock()
+	defer u.lock.Unlock()
+	u.lastCondition = cloneMap(condition)
 }
 
-func (u UserBizService[ID, S, M, Q, D]) BaseQueryByID(condition map[string]any, result *D) (int64, error) {
-	//TODO implement me
-	panic("implement me")
+func (u *UserBizService) MaxQuerySize() int { return 500 }
+
+func (u *UserBizService) DefaultOrderBy() string { return "id desc" }
+
+func (u *UserBizService) Save(save *UserSDTO) (uint64, error) {
+	u.lock.Lock()
+	defer u.lock.Unlock()
+	u.lastSave = *save
+	return 1, nil
 }
 
-func (u UserBizService[ID, S, M, Q, D]) BaseQueryOne(condition map[string]any, result *D) (int64, error) {
-	//TODO implement me
-	panic("implement me")
+func (u *UserBizService) BaseQueryByID(condition map[string]any) (*UserDTO, error) {
+	u.recordCondition(condition)
+	if condition["id"] == uint64(500) {
+		return nil, errServiceFailure
+	}
+	if condition["id"] == uint64(404) {
+		return nil, nil
+	}
+	return &UserDTO{User: User{ID: condition["id"].(uint64), ClassName: "one"}}, nil
 }
 
-func (u UserBizService[ID, S, M, Q, D]) BaseQuery(condition map[string]any, result *[]*D) (int64, error) {
-	//TODO implement me
-	panic("implement me")
+func (u *UserBizService) BaseQueryOne(condition map[string]any) (*UserDTO, error) {
+	u.recordCondition(condition)
+	if condition["name"] == "missing" {
+		return nil, nil
+	}
+	return &UserDTO{User: User{ID: 1, ClassName: "one"}}, nil
 }
 
-func (u UserBizService[ID, S, M, Q, D]) BaseQueryByPager(condition map[string]any, pager *webcloud.Pager[D]) error {
-	//TODO implement me
-	panic("implement me")
+func (u *UserBizService) BaseQuery(condition map[string]any) ([]*UserDTO, error) {
+	u.recordCondition(condition)
+	if condition["name"] == "failure" {
+		return nil, errServiceFailure
+	}
+	if condition["name"] == "empty" {
+		return []*UserDTO{}, nil
+	}
+	return []*UserDTO{{User: User{ID: 1, ClassName: "list"}}}, nil
 }
 
-func (u UserBizService[ID, S, M, Q, D]) BaseModifyByID(update, condition map[string]any) (int64, error) {
-	//TODO implement me
-	panic("implement me")
+func (u *UserBizService) BaseQueryPage(condition map[string]any, pager *webcloud.Pager[UserDTO]) error {
+	u.recordCondition(condition)
+	pager.Total = 1
+	pager.Records = []*UserDTO{{User: User{ID: 1, ClassName: "page"}}}
+	return nil
 }
 
-func (u UserBizService[ID, S, M, Q, D]) BaseRemoveByID(condition map[string]any) (int64, error) {
-	//TODO implement me
-	panic("implement me")
+func (u *UserBizService) BaseModifyByID(update, condition map[string]any) (int64, error) {
+	u.lock.Lock()
+	u.lastUpdate = cloneMap(update)
+	u.lastCondition = cloneMap(condition)
+	u.lock.Unlock()
+	if condition["id"] == uint64(500) {
+		return 0, errServiceFailure
+	}
+	if condition["id"] == uint64(404) {
+		return 0, nil
+	}
+	return 1, nil
 }
 
-func (u UserBizService[ID, S, M, Q, D]) QueryByID(id ID) *D {
-	//TODO implement me
-	panic("implement me")
+func (u *UserBizService) BaseRemoveByID(condition map[string]any) (int64, error) {
+	u.recordCondition(condition)
+	if condition["id"] == uint64(500) {
+		return 0, errServiceFailure
+	}
+	if condition["id"] == uint64(404) {
+		return 0, nil
+	}
+	return 1, nil
 }
 
-func (u UserBizService[ID, S, M, Q, D]) QueryOneByCond(condition *Q) *D {
-	//TODO implement me
-	panic("implement me")
+func (u *UserBizService) QueryByID(id uint64) (*UserDTO, error) {
+	return &UserDTO{User: User{ID: id}}, nil
 }
 
-func (u UserBizService[ID, S, M, Q, D]) QueryByCond(condition *Q) []*D {
-	//TODO implement me
-	panic("implement me")
+func (u *UserBizService) QueryOneByCond(condition *UserQDTO) (*UserDTO, error) {
+	return &UserDTO{User: User{ID: condition.UserID}}, nil
 }
 
-func (u UserBizService[ID, S, M, Q, D]) QueryByPager(pager webcloud.PagerDTO[Q]) webcloud.Pager[D] {
-	//TODO implement me
-	panic("implement me")
+func (u *UserBizService) QueryByCond(condition *UserQDTO) ([]*UserDTO, error) {
+	return []*UserDTO{{User: User{ID: condition.UserID}}}, nil
 }
 
-func (u UserBizService[ID, S, M, Q, D]) ModifyByID(updated *M) bool {
-	//TODO implement me
-	panic("implement me")
+func (u *UserBizService) QueryPage(pager webcloud.PagerDTO[UserQDTO]) (webcloud.Pager[UserDTO], error) {
+	return webcloud.Pager[UserDTO]{Number: pager.Number, Size: pager.Size}, nil
 }
 
-func (u UserBizService[ID, S, M, Q, D]) ModifyByIDExcludeZeroField(updated *M) bool {
-	//TODO implement me
-	panic("implement me")
+func (u *UserBizService) ModifyByID(id uint64, updated *UserMDTO) (int64, error) {
+	return 1, nil
 }
 
-func (u UserBizService[ID, S, M, Q, D]) ModifyByIdUseMap(updated map[string]any, id ID) bool {
-	//TODO implement me
-	panic("implement me")
+func (u *UserBizService) ModifyByIDWithoutZeroFields(id uint64, updated *UserMDTO) (int64, error) {
+	return 1, nil
 }
 
-func (u UserBizService[ID, S, M, Q, D]) RemoveByID(id ID) bool {
-	//TODO implement me
-	panic("implement me")
+func (u *UserBizService) ModifyByIDWithMap(id uint64, updated map[string]any) (int64, error) {
+	return 1, nil
 }
 
-func (u UserBizService[ID, S, M, Q, D]) RemoveByCond(condition *D) bool {
-	//TODO implement me
-	panic("implement me")
-}
+func (u *UserBizService) RemoveByID(id uint64) (int64, error) { return 1, nil }
 
-func (u UserBizService[ID, S, M, Q, D]) RemoveByMap(condition map[string]any) bool {
-	//TODO implement me
-	panic("implement me")
+func (u *UserBizService) RemoveByCond(condition *UserQDTO) (int64, error) { return 1, nil }
+
+func (u *UserBizService) RemoveByMap(condition map[string]any) (int64, error) {
+	return 1, nil
 }

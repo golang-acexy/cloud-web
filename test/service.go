@@ -49,6 +49,18 @@ func (u *UserBizService) Save(save *UserSDTO) (uint64, error) {
 	return 1, nil
 }
 
+func (u *UserBizService) SaveWithoutZeroFields(save *UserSDTO) (uint64, error) {
+	return u.Save(save)
+}
+
+func (u *UserBizService) SaveBatch(saves []*UserSDTO) ([]uint64, error) {
+	ids := make([]uint64, len(saves))
+	for index := range saves {
+		ids[index] = uint64(index + 1)
+	}
+	return ids, nil
+}
+
 func (u *UserBizService) BaseQueryByID(condition map[string]any) (*UserDTO, error) {
 	u.recordCondition(condition)
 	if condition["id"] == uint64(500) {
@@ -115,12 +127,28 @@ func (u *UserBizService) QueryByID(id uint64) (*UserDTO, error) {
 	return &UserDTO{User: User{ID: id}}, nil
 }
 
+func (u *UserBizService) QueryByIDs(ids []uint64) ([]*UserDTO, error) {
+	result := make([]*UserDTO, 0, len(ids))
+	for _, id := range ids {
+		result = append(result, &UserDTO{User: User{ID: id}})
+	}
+	return result, nil
+}
+
+func (u *UserBizService) ExistsByID(id uint64) (bool, error) {
+	return id != 0, nil
+}
+
 func (u *UserBizService) QueryOneByCond(condition *UserQDTO) (*UserDTO, error) {
 	return &UserDTO{User: User{ID: condition.UserID}}, nil
 }
 
 func (u *UserBizService) QueryByCond(condition *UserQDTO) ([]*UserDTO, error) {
 	return []*UserDTO{{User: User{ID: condition.UserID}}}, nil
+}
+
+func (u *UserBizService) CountByCond(condition *UserQDTO) (int64, error) {
+	return int64(condition.UserID), nil
 }
 
 func (u *UserBizService) QueryPage(pager webcloud.PagerDTO[UserQDTO]) (webcloud.Pager[UserDTO], error) {
@@ -140,6 +168,10 @@ func (u *UserBizService) ModifyByIDWithMap(id uint64, updated map[string]any) (i
 }
 
 func (u *UserBizService) RemoveByID(id uint64) (int64, error) { return 1, nil }
+
+func (u *UserBizService) RemoveByIDs(ids []uint64) (int64, error) {
+	return int64(len(ids)), nil
+}
 
 func (u *UserBizService) RemoveByCond(condition *UserQDTO) (int64, error) { return 1, nil }
 

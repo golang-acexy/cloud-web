@@ -84,6 +84,12 @@ type BaseBizService[ID IDType, S, M, Q, D any] interface {
 	// Save 保存数据
 	Save(save *S) (ID, error)
 
+	// SaveWithoutZeroFields 保存数据，忽略零值字段。
+	SaveWithoutZeroFields(save *S) (ID, error)
+
+	// SaveBatch 批量保存数据。
+	SaveBatch(saves []*S) ([]ID, error)
+
 	// BaseQueryByID 使用数据库字段条件查询主键记录。
 	BaseQueryByID(condition map[string]any) (*D, error)
 
@@ -105,11 +111,20 @@ type BaseBizService[ID IDType, S, M, Q, D any] interface {
 	// QueryByID 通过主键查询。
 	QueryByID(id ID) (*D, error)
 
+	// QueryByIDs 通过多个主键查询。
+	QueryByIDs(ids []ID) ([]*D, error)
+
+	// ExistsByID 判断指定主键的数据是否存在。
+	ExistsByID(id ID) (bool, error)
+
 	// QueryOneByCond 通过条件查询一条数据。
 	QueryOneByCond(condition *Q) (*D, error)
 
 	// QueryByCond 通过条件查询多条数据。
 	QueryByCond(condition *Q) ([]*D, error)
+
+	// CountByCond 统计符合条件的数据数量。
+	CountByCond(condition *Q) (int64, error)
 
 	// QueryPage 分页查询。
 	QueryPage(pager PagerDTO[Q]) (Pager[D], error)
@@ -125,6 +140,9 @@ type BaseBizService[ID IDType, S, M, Q, D any] interface {
 
 	// RemoveByID 根据主键删除数据。
 	RemoveByID(id ID) (int64, error)
+
+	// RemoveByIDs 根据多个主键删除数据。
+	RemoveByIDs(ids []ID) (int64, error)
 
 	// RemoveByCond 根据查询条件删除数据。
 	RemoveByCond(condition *Q) (int64, error)

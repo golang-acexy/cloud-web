@@ -4,9 +4,15 @@
 
 The module does not implement persistence. A generated business service adapts `cloud-database` or another persistence implementation to the `BaseBizService` contract.
 
+## Ecosystem Role
+
+This module standardizes the application-facing HTTP layers above `starter-gin`. It defines what a generated or custom BizService must provide and turns that contract into reusable REST routing, validation, DTO-field control, pagination, and authority enforcement.
+
 ## Requirements
 
 Current module Go version: `1.25.8`.
+
+## Installation
 
 ```bash
 go get github.com/golang-acexy/cloud-web
@@ -94,6 +100,8 @@ type BaseBizService[ID IDType, S, M, Q, D any] interface {
 	DefaultOrderBy() string
 
 	Save(save *S) (ID, error)
+	SaveWithoutZeroFields(save *S) (ID, error)
+	SaveBatch(saves []*S) ([]ID, error)
 
 	BaseQueryByID(condition map[string]any) (*D, error)
 	BaseQueryOne(condition map[string]any) (*D, error)
@@ -103,8 +111,11 @@ type BaseBizService[ID IDType, S, M, Q, D any] interface {
 	BaseRemoveByID(condition map[string]any) (int64, error)
 
 	QueryByID(id ID) (*D, error)
+	QueryByIDs(ids []ID) ([]*D, error)
+	ExistsByID(id ID) (bool, error)
 	QueryOneByCond(condition *Q) (*D, error)
 	QueryByCond(condition *Q) ([]*D, error)
+	CountByCond(condition *Q) (int64, error)
 	QueryPage(pager PagerDTO[Q]) (Pager[D], error)
 
 	ModifyByID(id ID, updated *M) (int64, error)
@@ -112,6 +123,7 @@ type BaseBizService[ID IDType, S, M, Q, D any] interface {
 	ModifyByIDWithMap(id ID, updated map[string]any) (int64, error)
 
 	RemoveByID(id ID) (int64, error)
+	RemoveByIDs(ids []ID) (int64, error)
 	RemoveByCond(condition *Q) (int64, error)
 	RemoveByMap(condition map[string]any) (int64, error)
 }

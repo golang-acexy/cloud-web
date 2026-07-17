@@ -200,7 +200,7 @@ func (b *BaseRouter[ID, S, M, Q, D]) Save() ginstarter.HandlerWrapper {
 		if err := b.setAuthorityLimitStruct(request, &param); err != nil {
 			return nil, err
 		}
-		id, err := b.baseBizService.Save(&param)
+		id, err := b.baseBizService.SaveWithoutZeroFields(&param)
 		if err != nil {
 			logger.Logrus().Errorln("cant save:", param, err)
 			return nil, err

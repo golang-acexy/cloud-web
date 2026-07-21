@@ -42,6 +42,19 @@ func assertRestStatus(t *testing.T, response restResponse, expected int) {
 	}
 }
 
+func TestBaseRouterHandlerOverride(t *testing.T) {
+	response := performRequest(t, http.MethodPost, "/usr/user/query-one", `{}`)
+	assertRestStatus(t, response, int(ginstarter.StatusCodeSuccess))
+
+	var actual string
+	if err := json.Unmarshal(response.Data, &actual); err != nil {
+		t.Fatalf("解析重写处理器响应失败: %v data=%s", err, response.Data)
+	}
+	if actual != "overridden-query-one" {
+		t.Fatalf("基础路由未分派到重写处理器: actual=%q", actual)
+	}
+}
+
 func TestAuthorityFieldsOverrideClientValues(t *testing.T) {
 	userBizService.reset()
 	response := performRequest(t, http.MethodPost, "/usr/user/save", `{"userId":999,"name":"save"}`)

@@ -42,6 +42,18 @@ type BaseRouter[ID IDType, S, M, Q, D any] struct {
 	queryAllowedColumns  []string // 允许自由查询的数据库字段
 }
 
+// BaseRouterHandlers 定义基础路由注册所需的全部处理器。
+// 具体路由可通过嵌入 BaseRouter 继承默认实现，并按需重写同名方法。
+type BaseRouterHandlers interface {
+	Save() ginstarter.HandlerWrapper
+	QueryByID() ginstarter.HandlerWrapper
+	QueryOne() ginstarter.HandlerWrapper
+	Query() ginstarter.HandlerWrapper
+	QueryPage() ginstarter.HandlerWrapper
+	ModifyByID() ginstarter.HandlerWrapper
+	RemoveByID() ginstarter.HandlerWrapper
+}
+
 func structNamesToColumns(structName []string) []string {
 	return coll.SliceCollect(structName, func(field string) string {
 		return structFieldToColumn(field)
@@ -154,21 +166,21 @@ func (b *BaseRouter[ID, S, M, Q, D]) setAuthorityLimitMap(request *ginstarter.Re
 	return nil
 }
 
-// RegisterBaseHandlers 注册基础路由。
-func (b *BaseRouter[ID, S, M, Q, D]) RegisterBaseHandlers(router *ginstarter.RouterWrapper) {
-	router.POST1("save", []string{gin.MIMEJSON}, b.Save())
+// RegisterBaseHandlers 注册基础路由，并通过 handlers 分派默认或重写的处理器。
+func (b *BaseRouter[ID, S, M, Q, D]) RegisterBaseHandlers(router *ginstarter.RouterWrapper, handlers BaseRouterHandlers) {
+	router.POST1("save", []string{gin.MIMEJSON}, handlers.Save())
 	// 通过主键查询单条数据
-	router.GET("by-id/:id", b.QueryByID())
+	router.GET("by-id/:id", handlers.QueryByID())
 	// 通过条件查询单条数据
-	router.POST1("query-one", []string{gin.MIMEJSON}, b.QueryOne())
+	router.POST1("query-one", []string{gin.MIMEJSON}, handlers.QueryOne())
 	// 通过条件查询多条数据
-	router.POST1("query", []string{gin.MIMEJSON}, b.Query())
+	router.POST1("query", []string{gin.MIMEJSON}, handlers.Query())
 	// 通过条件分页查询
-	router.POST1("query-by-page", []string{gin.MIMEJSON}, b.QueryPage())
+	router.POST1("query-by-page", []string{gin.MIMEJSON}, handlers.QueryPage())
 	// 通过主键更新数据
-	router.PUT1("by-id/:id", []string{gin.MIMEJSON}, b.ModifyByID())
+	router.PUT1("by-id/:id", []string{gin.MIMEJSON}, handlers.ModifyByID())
 	// 通过主键删除数据
-	router.DELETE("by-id/:id", b.RemoveByID())
+	router.DELETE("by-id/:id", handlers.RemoveByID())
 }
 
 // GetAuthorityData 获取当前请求的必需认证信息。

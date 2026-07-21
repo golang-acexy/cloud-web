@@ -22,5 +22,5 @@ func (r *AdmUserRouter) Info() *ginstarter.RouterInfo {
 }
 
 func (r *AdmUserRouter) Handlers(router *ginstarter.RouterWrapper) {
-	r.RegisterBaseHandlers(router)
+	r.RegisterBaseHandlers(router, r)
 }

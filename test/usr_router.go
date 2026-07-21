@@ -28,5 +28,11 @@ func (r *UsrUserRouter) Info() *ginstarter.RouterInfo {
 }
 
 func (r *UsrUserRouter) Handlers(router *ginstarter.RouterWrapper) {
-	r.RegisterBaseHandlers(router)
+	r.RegisterBaseHandlers(router, r)
+}
+
+func (r *UsrUserRouter) QueryOne() ginstarter.HandlerWrapper {
+	return func(request *ginstarter.Request) (ginstarter.Response, error) {
+		return ginstarter.RespRestSuccess("overridden-query-one"), nil
+	}
 }

@@ -173,10 +173,14 @@ func (r *UserRouter) Info() *ginstarter.RouterInfo {
 }
 
 func (r *UserRouter) Handlers(router *ginstarter.RouterWrapper) {
-	r.RegisterBaseHandlers(router)
+	r.RegisterBaseHandlers(router, r)
 	// Register resource-specific routes here.
 }
 ```
+
+The second argument is the concrete router used for handler dispatch. Methods
+implemented by `UserRouter` override the promoted `BaseRouter` methods; methods
+that are not overridden continue to use the embedded default implementations.
 
 `RegisterBaseHandlers` adds these routes relative to `GroupPath`:
 

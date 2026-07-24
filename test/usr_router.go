@@ -6,46 +6,33 @@ import (
 )
 
 var usrAuthorityFetch webcloud.AuthorityFetch[uint64] = func(request *ginstarter.Request) webcloud.Authority[uint64] {
-	return AuthorityUser[uint64]{
-		id: 12345,
-	}
+	return AuthorityUser[uint64]{id: 12345}
 }
 
-type UsrUserRouter[ID webcloud.IDType, S, M, Q, T any] struct {
+type UsrUserRouter struct {
 	*webcloud.BaseRouter[uint64, UserSDTO, UserMDTO, UserQDTO, UserDTO]
-	bizService webcloud.BaseBizService[uint64, UserSDTO, UserMDTO, UserQDTO, UserDTO]
 }
 
-func NewUsrUserRouter() *UsrUserRouter[uint64, UserSDTO, UserMDTO, UserQDTO, UserDTO] {
-	var bizService = UserBizService[uint64, UserSDTO, UserMDTO, UserQDTO, UserDTO]{}
-	return &UsrUserRouter[uint64, UserSDTO, UserMDTO, UserQDTO, UserDTO]{
-		BaseRouter: webcloud.NewBaseRouterWithAuthority[uint64, UserSDTO, UserMDTO, UserQDTO, UserDTO](bizService, usrAuthorityFetch, "user_id"),
-		bizService: bizService,
+func NewUsrUserRouter() *UsrUserRouter {
+	return &UsrUserRouter{
+		BaseRouter: webcloud.NewBaseRouterWithAuthority[uint64, UserSDTO, UserMDTO, UserQDTO, UserDTO](
+			userBizService,
+			usrAuthorityFetch,
+			webcloud.AuthorityDataField{StructField: "UserID", Column: "user_id"},
+		),
 	}
 }
 
-func (u *UsrUserRouter[ID, S, M, Q, T]) Info() *ginstarter.RouterInfo {
-	return &ginstarter.RouterInfo{
-		GroupPath: "usr/user",
-	}
+func (r *UsrUserRouter) Info() *ginstarter.RouterInfo {
+	return &ginstarter.RouterInfo{GroupPath: "/usr/user"}
 }
 
-func (u *UsrUserRouter[ID, S, M, Q, T]) registerBaseHandler(router *ginstarter.RouterWrapper) {
-	u.BaseRouter.RegisterBaseHandler(router, u.BaseRouter)
+func (r *UsrUserRouter) Handlers(router *ginstarter.RouterWrapper) {
+	r.RegisterBaseHandlers(router, r)
 }
 
-func (u *UsrUserRouter[ID, S, M, Q, T]) Handlers(router *ginstarter.RouterWrapper) {
-	// 注册基础路由
-	u.registerBaseHandler(router)
-
-	// 自定义实现业务
-	router.GET("test", u.test())
-}
-
-// 自定义实现业务
-
-func (*UsrUserRouter[ID, S, M, Q, T]) test() ginstarter.HandlerWrapper {
+func (r *UsrUserRouter) QueryOne() ginstarter.HandlerWrapper {
 	return func(request *ginstarter.Request) (ginstarter.Response, error) {
-		return ginstarter.RespRestSuccess(), nil
+		return ginstarter.RespRestSuccess("overridden-query-one"), nil
 	}
 }

@@ -17,17 +17,22 @@ func (a AuthorityUser[ID]) GetIdentityID() uint64 {
 }
 
 func (a AuthorityUser[ID]) GetPlatform() webcloud.Platform {
-	//TODO implement me
-	panic("implement me")
+	return "test"
 }
 
 type UserSDTO struct {
+	UserID uint64 `json:"userId"`
+	Name   string `json:"name"`
 }
 
 type UserMDTO struct {
+	UserID uint64 `json:"userId"`
+	Name   string `json:"name"`
 }
 
 type UserQDTO struct {
+	UserID uint64 `json:"userId"`
+	Name   string `json:"name"`
 }
 
 type UserDTO struct {

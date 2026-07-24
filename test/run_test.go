@@ -1,10 +1,6 @@
 package test
 
 import (
-	"fmt"
-	"testing"
-
-	"github.com/acexy/golang-toolkit/sys"
 	"github.com/golang-acexy/starter-gin/ginstarter"
 	"github.com/golang-acexy/starter-parent/parent"
 )
@@ -12,12 +8,10 @@ import (
 var starterLoader *parent.StarterLoader
 
 func init() {
-	starterLoader = parent.NewStarterLoader([]parent.Starter{
+	starterLoader = parent.InitStarterLoader([]parent.Starter{
 		&ginstarter.GinStarter{
 			Config: ginstarter.GinConfig{
-				ListenAddress:     ":8080",
-				UseReusePortModel: true,
-				DebugModule:       true,
+				ListenAddress: "127.0.0.1:0",
 				Routers: []ginstarter.Router{
 					NewUsrUserRouter(),
 					NewAdmUserRouter(),
@@ -25,14 +19,4 @@ func init() {
 			},
 		},
 	})
-	err := starterLoader.Start()
-	if err != nil {
-		fmt.Printf("%+v\n", err)
-		return
-	}
-	sys.ShutdownHolding()
-}
-
-func TestRun(t *testing.T) {
-
 }

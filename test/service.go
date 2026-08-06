@@ -10,10 +10,11 @@ import (
 var errServiceFailure = errors.New("service failure")
 
 type UserBizService struct {
-	lock          sync.Mutex
-	lastSave      UserSDTO
-	lastCondition map[string]any
-	lastUpdate    map[string]any
+	lock           sync.Mutex
+	lastSave       UserSDTO
+	lastCondition  map[string]any
+	lastUpdate     map[string]any
+	lastTimeRanges []webcloud.TimeRange
 }
 
 func (u *UserBizService) reset() {
@@ -22,6 +23,7 @@ func (u *UserBizService) reset() {
 	u.lastSave = UserSDTO{}
 	u.lastCondition = nil
 	u.lastUpdate = nil
+	u.lastTimeRanges = nil
 }
 
 func cloneMap(source map[string]any) map[string]any {
@@ -41,6 +43,12 @@ func (u *UserBizService) recordCondition(condition map[string]any) {
 func (u *UserBizService) MaxQuerySize() int { return 500 }
 
 func (u *UserBizService) DefaultOrderBy() string { return "id desc" }
+
+func (u *UserBizService) DefaultTimeRangeField() string { return "created_at" }
+
+func (u *UserBizService) AllowedTimeRangeFields() []string {
+	return []string{"created_at", "updated_at"}
+}
 
 func (u *UserBizService) Save(save *UserSDTO) (uint64, error) {
 	u.lock.Lock()
@@ -91,8 +99,11 @@ func (u *UserBizService) BaseQuery(condition map[string]any) ([]*UserDTO, error)
 	return []*UserDTO{{User: User{ID: 1, ClassName: "list"}}}, nil
 }
 
-func (u *UserBizService) BaseQueryPage(condition map[string]any, pager *webcloud.Pager[UserDTO]) error {
+func (u *UserBizService) BaseQueryPage(condition map[string]any, timeRanges []webcloud.TimeRange, pager *webcloud.Pager[UserDTO]) error {
 	u.recordCondition(condition)
+	u.lock.Lock()
+	u.lastTimeRanges = append([]webcloud.TimeRange(nil), timeRanges...)
+	u.lock.Unlock()
 	pager.Total = 1
 	pager.Records = []*UserDTO{{User: User{ID: 1, ClassName: "page"}}}
 	return nil
@@ -139,15 +150,15 @@ func (u *UserBizService) ExistsByID(id uint64) (bool, error) {
 	return id != 0, nil
 }
 
-func (u *UserBizService) QueryOneByCond(condition *UserQDTO) (*UserDTO, error) {
+func (u *UserBizService) QueryOneByCond(condition UserQDTO) (*UserDTO, error) {
 	return &UserDTO{User: User{ID: condition.UserID}}, nil
 }
 
-func (u *UserBizService) QueryByCond(condition *UserQDTO) ([]*UserDTO, error) {
+func (u *UserBizService) QueryByCond(condition UserQDTO) ([]*UserDTO, error) {
 	return []*UserDTO{{User: User{ID: condition.UserID}}}, nil
 }
 
-func (u *UserBizService) CountByCond(condition *UserQDTO) (int64, error) {
+func (u *UserBizService) CountByCond(condition UserQDTO) (int64, error) {
 	return int64(condition.UserID), nil
 }
 
@@ -173,7 +184,7 @@ func (u *UserBizService) RemoveByIDs(ids []uint64) (int64, error) {
 	return int64(len(ids)), nil
 }
 
-func (u *UserBizService) RemoveByCond(condition *UserQDTO) (int64, error) { return 1, nil }
+func (u *UserBizService) RemoveByCond(condition UserQDTO) (int64, error) { return 1, nil }
 
 func (u *UserBizService) RemoveByMap(condition map[string]any) (int64, error) {
 	return 1, nil

@@ -26,7 +26,6 @@ var defaultForbiddenColumns = []string{
 	"update_time",
 	"update_at",
 	"updated_at",
-	"deleted_at",
 }
 
 type BaseRouter[ID IDType, S, M, Q, D any] struct {
@@ -134,6 +133,42 @@ func (b *BaseRouter[ID, S, M, Q, D]) checkField(param map[string]any, m mode) bo
 		return false
 	}
 	return true
+}
+
+// normalizeTimeRanges 补全默认时间字段，并校验客户端传入的字段是否在白名单中。
+func (b *BaseRouter[ID, S, M, Q, D]) normalizeTimeRanges(timeRanges []TimeRange) ([]TimeRange, bool) {
+	if len(timeRanges) == 0 {
+		return nil, true
+	}
+	defaultField := str.CamelToSnake(b.baseBizService.DefaultTimeRangeField())
+	allowedFields := coll.SliceCollect(b.baseBizService.AllowedTimeRangeFields(), func(field string) string {
+		return str.CamelToSnake(field)
+	})
+	result := make([]TimeRange, 0, len(timeRanges))
+	defaultFieldUsed := false
+	for _, timeRange := range timeRanges {
+		field := str.CamelToSnake(timeRange.Field)
+		if field == "" {
+			if defaultFieldUsed {
+				return nil, false
+			}
+			defaultFieldUsed = true
+			field = defaultField
+		}
+		if field == "" || !coll.SliceContains(allowedFields, field) {
+			logger.Logrus().Warningln("time range field not allowed: ", field)
+			return nil, false
+		}
+		if timeRange.Start.IsZero() && timeRange.End.IsZero() {
+			return nil, false
+		}
+		if !timeRange.Start.IsZero() && !timeRange.End.IsZero() && !timeRange.Start.Before(timeRange.End.Time) {
+			return nil, false
+		}
+		timeRange.Field = field
+		result = append(result, timeRange)
+	}
+	return result, true
 }
 
 // setAuthorityLimitStruct 向请求 DTO 强制写入数据权限字段。
@@ -304,7 +339,11 @@ func (b *BaseRouter[ID, S, M, Q, D]) QueryPage() ginstarter.HandlerWrapper {
 		if err := b.setAuthorityLimitMap(request, param); err != nil {
 			return nil, err
 		}
-		if err := b.baseBizService.BaseQueryPage(param, &pager); err != nil {
+		timeRanges, valid := b.normalizeTimeRanges(requestParam.TimeRanges)
+		if !valid {
+			return ginstarter.RespRestBadParameters(), nil
+		}
+		if err := b.baseBizService.BaseQueryPage(param, timeRanges, &pager); err != nil {
 			return nil, err
 		}
 		return ginstarter.RespRestSuccess(pager), nil

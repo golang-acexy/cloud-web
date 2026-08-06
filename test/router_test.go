@@ -96,6 +96,30 @@ func TestPageValidationAndAuthority(t *testing.T) {
 	}
 }
 
+func TestPageTimeRangeValidation(t *testing.T) {
+	userBizService.reset()
+	response := performRequest(t, http.MethodPost, "/usr/user/query-by-page", `{"number":1,"size":10,"timeRanges":[{"start":1704067200000,"end":1704153600000}]}`)
+	assertRestStatus(t, response, int(ginstarter.StatusCodeSuccess))
+	if len(userBizService.lastTimeRanges) != 1 || userBizService.lastTimeRanges[0].Field != "created_at" {
+		t.Fatalf("默认时间范围字段未正确传递: %+v", userBizService.lastTimeRanges)
+	}
+
+	response = performRequest(t, http.MethodPost, "/usr/user/query-by-page", `{"number":1,"size":10,"timeRanges":[{"field":"updatedAt","start":1704067200000,"end":1704153600000},{"field":"createdAt","start":1703980800000}]}`)
+	assertRestStatus(t, response, int(ginstarter.StatusCodeSuccess))
+	if len(userBizService.lastTimeRanges) != 2 || userBizService.lastTimeRanges[0].Field != "updated_at" || userBizService.lastTimeRanges[1].Field != "created_at" {
+		t.Fatalf("显式时间范围字段未正确转换: %+v", userBizService.lastTimeRanges)
+	}
+
+	response = performRequest(t, http.MethodPost, "/usr/user/query-by-page", `{"number":1,"size":10,"timeRanges":[{"field":"deletedAt","start":1704067200000,"end":1704153600000}]}`)
+	assertRestStatus(t, response, int(ginstarter.StatusCodeBadRequestParameters))
+
+	response = performRequest(t, http.MethodPost, "/usr/user/query-by-page", `{"number":1,"size":10,"timeRanges":[{"start":1704153600000,"end":1704067200000}]}`)
+	assertRestStatus(t, response, int(ginstarter.StatusCodeBadRequestParameters))
+
+	response = performRequest(t, http.MethodPost, "/usr/user/query-by-page", `{"number":1,"size":10,"timeRanges":[{"start":1703980800000},{"end":1704153600000}]}`)
+	assertRestStatus(t, response, int(ginstarter.StatusCodeBadRequestParameters))
+}
+
 func TestResponseAndErrorSemantics(t *testing.T) {
 	response := performRequest(t, http.MethodGet, "/adm/user/by-id/not-number", "")
 	assertRestStatus(t, response, int(ginstarter.StatusCodeBadRequestParameters))

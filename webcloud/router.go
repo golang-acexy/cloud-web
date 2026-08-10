@@ -26,7 +26,6 @@ var defaultForbiddenColumns = []string{
 	"update_time",
 	"update_at",
 	"updated_at",
-	"deleted_at",
 }
 
 type BaseRouter[ID IDType, S, M, Q, D any] struct {
@@ -134,6 +133,20 @@ func (b *BaseRouter[ID, S, M, Q, D]) checkField(param map[string]any, m mode) bo
 		return false
 	}
 	return true
+}
+
+// normalizeTimeRanges 补全默认时间字段，并校验客户端传入的字段是否在白名单中。
+func (b *BaseRouter[ID, S, M, Q, D]) normalizeTimeRanges(timeRanges []TimeRange) ([]TimeRange, bool) {
+	result, err := normalizeTimeRanges(
+		timeRanges,
+		b.baseBizService.AllowedTimeRangeFields(),
+		b.baseBizService.DefaultTimeRangeField(),
+	)
+	if err != nil {
+		logger.Logrus().Warningln("invalid time ranges")
+		return nil, false
+	}
+	return result, true
 }
 
 // setAuthorityLimitStruct 向请求 DTO 强制写入数据权限字段。
@@ -304,7 +317,11 @@ func (b *BaseRouter[ID, S, M, Q, D]) QueryPage() ginstarter.HandlerWrapper {
 		if err := b.setAuthorityLimitMap(request, param); err != nil {
 			return nil, err
 		}
-		if err := b.baseBizService.BaseQueryPage(param, &pager); err != nil {
+		timeRanges, valid := b.normalizeTimeRanges(requestParam.TimeRanges)
+		if !valid {
+			return ginstarter.RespRestBadParameters(), nil
+		}
+		if err := b.baseBizService.BaseQueryPage(param, timeRanges, &pager); err != nil {
 			return nil, err
 		}
 		return ginstarter.RespRestSuccess(pager), nil

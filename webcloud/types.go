@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"strconv"
 
+	"github.com/acexy/golang-toolkit/util/json"
 	"github.com/golang-acexy/starter-gin/ginstarter"
 )
 
@@ -31,20 +32,27 @@ type AuthorityDataField struct {
 	Column      string
 }
 
-// Pager 分页响应信息
-type Pager[T any] struct {
-	Records []*T  `json:"records"` // 响应数据
-	Total   int64 `json:"total"`   // 响应总记录数
-
-	Size   int `json:"size"` // 请求每页记录数
-	Number int `json:"number"`
+// TimeRange 定义某个白名单时间字段的左闭右开查询范围。
+type TimeRange struct {
+	Field string          `json:"field"` // 支持驼峰或下划线字段名，字段必须位于时间范围白名单中
+	Start *json.Timestamp `json:"start"`
+	End   *json.Timestamp `json:"end"`
 }
 
 // PagerDTO 分页查询信息
 type PagerDTO[T any] struct {
-	Size      int `json:"size" form:"size"  binding:"required,gte=1,lte=2000"` // 请求每页记录数
-	Number    int `json:"number" form:"number"  binding:"required,gte=1"`      // 请求页码 从1开始
-	Condition T   `json:"condition"`
+	Size       int         `json:"size" form:"size"  binding:"required,gte=1,lte=2000"` // 请求每页记录数
+	Number     int         `json:"number" form:"number"  binding:"required,gte=1"`      // 请求页码 从1开始
+	Condition  T           `json:"condition"`
+	TimeRanges []TimeRange `json:"timeRanges"`
+}
+
+// Pager 分页响应信息
+type Pager[T any] struct {
+	Records []*T  `json:"records"` // 响应数据
+	Total   int64 `json:"total"`   // 响应总记录数
+	Size    int   `json:"size"`    // 请求每页记录数
+	Number  int   `json:"number"`
 }
 
 // ConvertStringToID 将字符串转换为实际主键类型。
@@ -81,6 +89,12 @@ type BaseBizService[ID IDType, S, M, Q, D any] interface {
 	// DefaultOrderBy 返回默认排序表达式，具体格式由持久化实现解释。
 	DefaultOrderBy() string
 
+	// DefaultTimeRangeField 默认查询时间范围字段。
+	DefaultTimeRangeField() string
+
+	// AllowedTimeRangeFields 允许使用的时间范围字段。
+	AllowedTimeRangeFields() []string
+
 	// Save 保存数据
 	Save(save *S) (ID, error)
 
@@ -100,7 +114,7 @@ type BaseBizService[ID IDType, S, M, Q, D any] interface {
 	BaseQuery(condition map[string]any) ([]*D, error)
 
 	// BaseQueryPage 使用数据库字段条件分页查询。
-	BaseQueryPage(condition map[string]any, pager *Pager[D]) error
+	BaseQueryPage(condition map[string]any, timeRanges []TimeRange, pager *Pager[D]) error
 
 	// BaseModifyByID 通过主键修改数据
 	BaseModifyByID(update, condition map[string]any) (int64, error)
@@ -118,13 +132,13 @@ type BaseBizService[ID IDType, S, M, Q, D any] interface {
 	ExistsByID(id ID) (bool, error)
 
 	// QueryOneByCond 通过条件查询一条数据。
-	QueryOneByCond(condition *Q) (*D, error)
+	QueryOneByCond(condition Q) (*D, error)
 
 	// QueryByCond 通过条件查询多条数据。
-	QueryByCond(condition *Q) ([]*D, error)
+	QueryByCond(condition Q) ([]*D, error)
 
 	// CountByCond 统计符合条件的数据数量。
-	CountByCond(condition *Q) (int64, error)
+	CountByCond(condition Q) (int64, error)
 
 	// QueryPage 分页查询。
 	QueryPage(pager PagerDTO[Q]) (Pager[D], error)
@@ -145,7 +159,7 @@ type BaseBizService[ID IDType, S, M, Q, D any] interface {
 	RemoveByIDs(ids []ID) (int64, error)
 
 	// RemoveByCond 根据查询条件删除数据。
-	RemoveByCond(condition *Q) (int64, error)
+	RemoveByCond(condition Q) (int64, error)
 
 	// RemoveByMap 根据数据库字段条件删除数据。
 	RemoveByMap(condition map[string]any) (int64, error)

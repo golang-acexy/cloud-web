@@ -98,6 +98,8 @@ A generated service implements `BaseBizService`:
 type BaseBizService[ID IDType, S, M, Q, D any] interface {
 	MaxQuerySize() int
 	DefaultOrderBy() string
+	DefaultTimeRangeField() string
+	AllowedTimeRangeFields() []string
 
 	Save(save *S) (ID, error)
 	SaveWithoutZeroFields(save *S) (ID, error)
@@ -106,16 +108,16 @@ type BaseBizService[ID IDType, S, M, Q, D any] interface {
 	BaseQueryByID(condition map[string]any) (*D, error)
 	BaseQueryOne(condition map[string]any) (*D, error)
 	BaseQuery(condition map[string]any) ([]*D, error)
-	BaseQueryPage(condition map[string]any, pager *Pager[D]) error
+	BaseQueryPage(condition map[string]any, timeRanges []TimeRange, pager *Pager[D]) error
 	BaseModifyByID(update, condition map[string]any) (int64, error)
 	BaseRemoveByID(condition map[string]any) (int64, error)
 
 	QueryByID(id ID) (*D, error)
 	QueryByIDs(ids []ID) ([]*D, error)
 	ExistsByID(id ID) (bool, error)
-	QueryOneByCond(condition *Q) (*D, error)
-	QueryByCond(condition *Q) ([]*D, error)
-	CountByCond(condition *Q) (int64, error)
+	QueryOneByCond(condition Q) (*D, error)
+	QueryByCond(condition Q) ([]*D, error)
+	CountByCond(condition Q) (int64, error)
 	QueryPage(pager PagerDTO[Q]) (Pager[D], error)
 
 	ModifyByID(id ID, updated *M) (int64, error)
@@ -124,7 +126,7 @@ type BaseBizService[ID IDType, S, M, Q, D any] interface {
 
 	RemoveByID(id ID) (int64, error)
 	RemoveByIDs(ids []ID) (int64, error)
-	RemoveByCond(condition *Q) (int64, error)
+	RemoveByCond(condition Q) (int64, error)
 	RemoveByMap(condition map[string]any) (int64, error)
 }
 ```
@@ -254,10 +256,17 @@ optional := router.GetOptionalAuthorityData(request)
 The page request contract is:
 
 ```go
+type TimeRange struct {
+	Field string         `json:"field"`
+	Start json.Timestamp `json:"start"`
+	End   json.Timestamp `json:"end"`
+}
+
 type PagerDTO[T any] struct {
-	Size      int `json:"size" binding:"required,gte=1,lte=2000"`
-	Number    int `json:"number" binding:"required,gte=1"`
-	Condition T   `json:"condition"`
+	Size       int         `json:"size" binding:"required,gte=1,lte=2000"`
+	Number     int         `json:"number" binding:"required,gte=1"`
+	Condition  T           `json:"condition"`
+	TimeRanges []TimeRange `json:"timeRanges"`
 }
 ```
 
@@ -269,9 +278,21 @@ Example request:
   "size": 20,
   "condition": {
     "name": "Alice"
-  }
+  },
+  "timeRanges": [
+    {
+      "start": 1785513600000,
+      "end": 1785600000000
+    },
+    {
+      "field": "updatedAt",
+      "start": 1785513600000
+    }
+  ]
 }
 ```
+
+An omitted `field` uses `DefaultTimeRangeField`; at most one range may omit it. Explicit fields are converted to snake case and must match `AllowedTimeRangeFields`. A range must contain at least one bound, and when both bounds are present it uses `[start, end)` and requires `start < end`.
 
 The response contains page metadata and records:
 

@@ -34,9 +34,9 @@ type AuthorityDataField struct {
 
 // TimeRange 定义某个白名单时间字段的左闭右开查询范围。
 type TimeRange struct {
-	Field string         `json:"field"`
-	Start json.Timestamp `json:"start"`
-	End   json.Timestamp `json:"end"`
+	Field string          `json:"field"` // 支持驼峰或下划线字段名，字段必须位于时间范围白名单中
+	Start *json.Timestamp `json:"start"`
+	End   *json.Timestamp `json:"end"`
 }
 
 // PagerDTO 分页查询信息

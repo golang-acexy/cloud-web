@@ -137,36 +137,14 @@ func (b *BaseRouter[ID, S, M, Q, D]) checkField(param map[string]any, m mode) bo
 
 // normalizeTimeRanges 补全默认时间字段，并校验客户端传入的字段是否在白名单中。
 func (b *BaseRouter[ID, S, M, Q, D]) normalizeTimeRanges(timeRanges []TimeRange) ([]TimeRange, bool) {
-	if len(timeRanges) == 0 {
-		return nil, true
-	}
-	defaultField := str.CamelToSnake(b.baseBizService.DefaultTimeRangeField())
-	allowedFields := coll.SliceCollect(b.baseBizService.AllowedTimeRangeFields(), func(field string) string {
-		return str.CamelToSnake(field)
-	})
-	result := make([]TimeRange, 0, len(timeRanges))
-	defaultFieldUsed := false
-	for _, timeRange := range timeRanges {
-		field := str.CamelToSnake(timeRange.Field)
-		if field == "" {
-			if defaultFieldUsed {
-				return nil, false
-			}
-			defaultFieldUsed = true
-			field = defaultField
-		}
-		if field == "" || !coll.SliceContains(allowedFields, field) {
-			logger.Logrus().Warningln("time range field not allowed: ", field)
-			return nil, false
-		}
-		if timeRange.Start.IsZero() && timeRange.End.IsZero() {
-			return nil, false
-		}
-		if !timeRange.Start.IsZero() && !timeRange.End.IsZero() && !timeRange.Start.Before(timeRange.End.Time) {
-			return nil, false
-		}
-		timeRange.Field = field
-		result = append(result, timeRange)
+	result, err := normalizeTimeRanges(
+		timeRanges,
+		b.baseBizService.AllowedTimeRangeFields(),
+		b.baseBizService.DefaultTimeRangeField(),
+	)
+	if err != nil {
+		logger.Logrus().Warningln("invalid time ranges")
+		return nil, false
 	}
 	return result, true
 }

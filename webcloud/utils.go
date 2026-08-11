@@ -5,7 +5,7 @@ import (
 
 	"github.com/acexy/golang-toolkit/util/coll"
 	"github.com/acexy/golang-toolkit/util/str"
-	"github.com/golang-acexy/starter-gorm/gormstarter"
+	"github.com/golang-acexy/cloud-database/databasecloud/rds"
 )
 
 // normalizeTimeRanges 补全默认时间字段，并统一校验时间字段白名单和查询范围。
@@ -43,13 +43,13 @@ func normalizeTimeRanges(timeRanges []TimeRange, allowedFields []string, default
 	return result, nil
 }
 
-// ConvertTimeRanges 校验时间字段白名单，并转换为 GORM 分页查询参数。
-func ConvertTimeRanges(timeRanges []TimeRange, allowedFields []string, defaultTimeRangeField string) ([]gormstarter.TimeRange, error) {
+// ConvertTimeRanges 校验时间字段白名单，并转换为 RDS 查询参数。
+func ConvertTimeRanges(timeRanges []TimeRange, allowedFields []string, defaultTimeRangeField string) ([]rds.TimeRange, error) {
 	normalized, err := normalizeTimeRanges(timeRanges, allowedFields, defaultTimeRangeField)
 	if err != nil {
 		return nil, err
 	}
-	result := make([]gormstarter.TimeRange, 0, len(normalized))
+	result := make([]rds.TimeRange, 0, len(normalized))
 	for _, timeRange := range normalized {
 		var startTime, endTime *time.Time
 		if timeRange.Start != nil {
@@ -60,7 +60,7 @@ func ConvertTimeRanges(timeRanges []TimeRange, allowedFields []string, defaultTi
 			value := timeRange.End.Time
 			endTime = &value
 		}
-		result = append(result, gormstarter.TimeRange{Field: timeRange.Field, StartTime: startTime, EndTime: endTime})
+		result = append(result, rds.TimeRange{Field: timeRange.Field, StartTime: startTime, EndTime: endTime})
 	}
 	return result, nil
 }

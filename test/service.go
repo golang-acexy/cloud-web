@@ -99,14 +99,17 @@ func (u *UserBizService) BaseQuery(condition map[string]any) ([]*UserDTO, error)
 	return []*UserDTO{{User: User{ID: 1, ClassName: "list"}}}, nil
 }
 
-func (u *UserBizService) BaseQueryPage(condition map[string]any, timeRanges []webcloud.TimeRange, pager *webcloud.Pager[UserDTO]) error {
-	u.recordCondition(condition)
+func (u *UserBizService) BaseQueryPage(query webcloud.PagerDTO[map[string]any]) (webcloud.Pager[UserDTO], error) {
+	u.recordCondition(query.Condition)
 	u.lock.Lock()
-	u.lastTimeRanges = append([]webcloud.TimeRange(nil), timeRanges...)
+	u.lastTimeRanges = append([]webcloud.TimeRange(nil), query.TimeRanges...)
 	u.lock.Unlock()
-	pager.Total = 1
-	pager.Records = []*UserDTO{{User: User{ID: 1, ClassName: "page"}}}
-	return nil
+	return webcloud.Pager[UserDTO]{
+		Records: []*UserDTO{{User: User{ID: 1, ClassName: "page"}}},
+		Total:   1,
+		Size:    query.Size,
+		Number:  query.Number,
+	}, nil
 }
 
 func (u *UserBizService) BaseModifyByID(update, condition map[string]any) (int64, error) {
@@ -162,6 +165,10 @@ func (u *UserBizService) CountByCond(condition UserQDTO) (int64, error) {
 	return int64(condition.UserID), nil
 }
 
+func (u *UserBizService) CountByMap(condition map[string]any) (int64, error) {
+	return int64(len(condition)), nil
+}
+
 func (u *UserBizService) QueryPage(pager webcloud.PagerDTO[UserQDTO]) (webcloud.Pager[UserDTO], error) {
 	return webcloud.Pager[UserDTO]{Number: pager.Number, Size: pager.Size}, nil
 }
@@ -175,6 +182,14 @@ func (u *UserBizService) ModifyByIDWithoutZeroFields(id uint64, updated *UserMDT
 }
 
 func (u *UserBizService) ModifyByIDWithMap(id uint64, updated map[string]any) (int64, error) {
+	return 1, nil
+}
+
+func (u *UserBizService) ModifyByCond(condition UserQDTO, updated *UserMDTO) (int64, error) {
+	return 1, nil
+}
+
+func (u *UserBizService) ModifyByMap(updated, condition map[string]any) (int64, error) {
 	return 1, nil
 }
 

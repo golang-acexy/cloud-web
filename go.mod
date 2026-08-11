@@ -5,8 +5,8 @@ go 1.25.8
 require (
 	github.com/acexy/golang-toolkit v1.25.3
 	github.com/gin-gonic/gin v1.12.0
+	github.com/golang-acexy/cloud-database v1.25.2-0.20260811092218-cfc24648cf7f
 	github.com/golang-acexy/starter-gin v1.25.0
-	github.com/golang-acexy/starter-gorm v1.25.2
 	github.com/golang-acexy/starter-parent v1.25.0
 )
 
@@ -24,6 +24,7 @@ require (
 	github.com/go-sql-driver/mysql v1.10.0 // indirect
 	github.com/goccy/go-json v0.10.6 // indirect
 	github.com/goccy/go-yaml v1.19.2 // indirect
+	github.com/golang-acexy/starter-gorm v1.25.3-0.20260811085024-07d51cb120b2 // indirect
 	github.com/iancoleman/strcase v0.3.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect

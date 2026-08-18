@@ -108,7 +108,7 @@ type BaseBizService[ID IDType, S, M, Q, D any] interface {
 	BaseQueryByID(condition map[string]any) (*D, error)
 	BaseQueryOne(condition map[string]any) (*D, error)
 	BaseQuery(condition map[string]any) ([]*D, error)
-	BaseQueryPage(condition map[string]any, timeRanges []TimeRange, pager *Pager[D]) error
+	BaseQueryPage(query PagerDTO[map[string]any]) (Pager[D], error)
 	BaseModifyByID(update, condition map[string]any) (int64, error)
 	BaseRemoveByID(condition map[string]any) (int64, error)
 
@@ -118,11 +118,14 @@ type BaseBizService[ID IDType, S, M, Q, D any] interface {
 	QueryOneByCond(condition Q) (*D, error)
 	QueryByCond(condition Q) ([]*D, error)
 	CountByCond(condition Q) (int64, error)
+	CountByMap(condition map[string]any) (int64, error)
 	QueryPage(pager PagerDTO[Q]) (Pager[D], error)
 
 	ModifyByID(id ID, updated *M) (int64, error)
 	ModifyByIDWithoutZeroFields(id ID, updated *M) (int64, error)
 	ModifyByIDWithMap(id ID, updated map[string]any) (int64, error)
+	ModifyByCond(condition Q, updated *M) (int64, error)
+	ModifyByMap(updated, condition map[string]any) (int64, error)
 
 	RemoveByID(id ID) (int64, error)
 	RemoveByIDs(ids []ID) (int64, error)
@@ -131,7 +134,7 @@ type BaseBizService[ID IDType, S, M, Q, D any] interface {
 }
 ```
 
-The `Base*` methods receive database-column maps from `BaseRouter`. The other methods form the typed business API available to application code.
+The `Base*` methods receive database-column maps from `BaseRouter`. The other methods form the typed business API available to application code. Map-based operations preserve explicit zero values and are the preferred bridge for generic REST conditions and updates.
 
 All persistence failures must be returned as errors. Generated implementations must not collapse database errors into `false`, nil results, or zero values.
 

@@ -114,7 +114,7 @@ type BaseBizService[ID IDType, S, M, Q, D any] interface {
 	BaseQuery(condition map[string]any) ([]*D, error)
 
 	// BaseQueryPage 使用数据库字段条件分页查询。
-	BaseQueryPage(condition map[string]any, timeRanges []TimeRange, pager *Pager[D]) error
+	BaseQueryPage(query PagerDTO[map[string]any]) (Pager[D], error)
 
 	// BaseModifyByID 通过主键修改数据
 	BaseModifyByID(update, condition map[string]any) (int64, error)
@@ -140,6 +140,9 @@ type BaseBizService[ID IDType, S, M, Q, D any] interface {
 	// CountByCond 统计符合条件的数据数量。
 	CountByCond(condition Q) (int64, error)
 
+	// CountByMap 根据数据库字段条件统计数据，支持显式零值条件。
+	CountByMap(condition map[string]any) (int64, error)
+
 	// QueryPage 分页查询。
 	QueryPage(pager PagerDTO[Q]) (Pager[D], error)
 
@@ -151,6 +154,12 @@ type BaseBizService[ID IDType, S, M, Q, D any] interface {
 
 	// ModifyByIDWithMap 根据主键使用 Map 修改数据。
 	ModifyByIDWithMap(id ID, updated map[string]any) (int64, error)
+
+	// ModifyByCond 根据类型化条件修改数据。
+	ModifyByCond(condition Q, updated *M) (int64, error)
+
+	// ModifyByMap 根据数据库字段条件和字段值修改数据，支持显式零值。
+	ModifyByMap(updated, condition map[string]any) (int64, error)
 
 	// RemoveByID 根据主键删除数据。
 	RemoveByID(id ID) (int64, error)

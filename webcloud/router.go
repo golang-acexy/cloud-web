@@ -298,11 +298,6 @@ func (b *BaseRouter[ID, S, M, Q, D]) QueryPage() ginstarter.HandlerWrapper {
 		if err := request.BindBodyJSON(&requestParam); err != nil {
 			return ginstarter.RespRestBadParameters(), nil
 		}
-		pager := Pager[D]{
-			Records: make([]*D, 0),
-			Number:  requestParam.Number,
-			Size:    requestParam.Size,
-		}
 		param := requestParam.Condition
 		if param == nil {
 			param = make(map[string]any)
@@ -321,7 +316,13 @@ func (b *BaseRouter[ID, S, M, Q, D]) QueryPage() ginstarter.HandlerWrapper {
 		if !valid {
 			return ginstarter.RespRestBadParameters(), nil
 		}
-		if err := b.baseBizService.BaseQueryPage(param, timeRanges, &pager); err != nil {
+		pager, err := b.baseBizService.BaseQueryPage(PagerDTO[map[string]any]{
+			Number:     requestParam.Number,
+			Size:       requestParam.Size,
+			Condition:  param,
+			TimeRanges: timeRanges,
+		})
+		if err != nil {
 			return nil, err
 		}
 		return ginstarter.RespRestSuccess(pager), nil

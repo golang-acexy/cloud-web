@@ -76,7 +76,7 @@ type UserDTO struct {
 }
 ```
 
-The generic parameters `S`, `M`, and `Q` passed to `BaseRouter` must be non-pointer struct types.
+Use non-pointer structs for `S`, `M`, and `Q`. Construction checks `Q` and `M` and panics on invalid kinds or ambiguous embedded fields; it does not validate `S` or reject a nil service.
 
 DTOs are part of the protocol contract. Field names must follow the standard mapping:
 
@@ -86,9 +86,9 @@ JSON field:     userId
 database field: user_id
 ```
 
-Custom JSON aliases are not interpreted when building field allowlists.
+JSON, GORM, and BSON tags are not interpreted when building query/update allowlists, including `json:"-"`. Map requests validate keys only: DTO field types and `binding` tags do not validate their values. Apply value validation in your service or override the handler. Avoid sending multiple keys that normalize to the same column, such as `userId` and `user_id`; collision winners are unspecified.
 
-Database-generated fields such as IDs, creation timestamps, update timestamps, and deletion timestamps must not be declared in save DTOs. They may be present in query DTOs and response DTOs. The base modify route rejects common generated columns including `id`, `created_at`, `updated_at`, and `deleted_at`.
+Database-generated fields such as IDs, creation timestamps, update timestamps, and deletion timestamps must not be declared in save DTOs. They may be present in query DTOs and response DTOs. The base modify route rejects `id`, `created_at`, `create_time`, `modified_at`, `modified_time`, `update_time`, `update_at`, and `updated_at`. It does not automatically reject `deleted_at`; omit soft-delete and other protected fields from modify DTOs. Save binding does not apply this column denylist. The default save handler logs the bound DTO on service errors; override it if save payloads contain fields that must not enter logs.
 
 ## Business Service Contract
 
@@ -136,7 +136,7 @@ type BaseBizService[ID IDType, S, M, Q, D any] interface {
 
 The `Base*` methods receive database-column maps from `BaseRouter`. The other methods form the typed business API available to application code. Map-based operations preserve explicit zero values and are the preferred bridge for generic REST conditions and updates.
 
-All persistence failures must be returned as errors. Generated implementations must not collapse database errors into `false`, nil results, or zero values.
+Services and authority callbacks are shared by concurrent requests and must be safe for that use. The interface does not receive a request context or provide automatic transaction boundaries. All persistence failures must be returned as errors. Generated implementations must not collapse database errors into `false`, nil results, or zero values.
 
 ## Base Router
 
@@ -199,7 +199,7 @@ that are not overridden continue to use the embedded default implementations.
 | `PUT` | `/by-id/:id` | Modify one resource by ID. |
 | `DELETE` | `/by-id/:id` | Remove one resource by ID. |
 
-JSON media type is required for routes with request bodies.
+JSON media type is required for routes with request bodies. `/query` and `/query-one` require nonempty condition maps; `/query-by-page` permits an omitted condition. List limits and default sorting must be applied by the service, not by the router.
 
 ## Authority-Controlled Router
 
@@ -231,7 +231,7 @@ baseRouter := webcloud.NewBaseRouterWithAuthority[
 - `StructField` is the Go field used to inject identity into the save DTO.
 - `Column` is the database field added to query, update, and delete conditions.
 
-Authority values are written after client input is parsed and converted. Client-supplied values for the controlled field are therefore overwritten by the authenticated identity.
+Save DTO binding and validation happen before authority injection. Do not require the client to supply a system-owned identity merely to pass a binding tag. Use a writable authority field with the same type as the identity; reflection conversion does not guarantee overflow safety. Configure a persistence column distinct from `id` when ownership and resource ID are separate, since injection overwrites an existing key. Authority values are written after client input is parsed and converted. Client-supplied values for the controlled field are therefore overwritten by the authenticated identity.
 
 Behavior by operation:
 
@@ -252,7 +252,7 @@ authority := router.GetAuthorityData(request)
 optional := router.GetOptionalAuthorityData(request)
 ```
 
-`GetAuthorityData` requires an authenticated identity. `GetOptionalAuthorityData` allows the configured fetcher to return nil.
+`GetAuthorityData` requires a non-nil authority. `GetOptionalAuthorityData` allows the configured fetcher to return nil, but both methods panic through the request pipeline if no fetcher is configured. Return a nil interface for absence, not an interface containing a typed nil pointer. The router does not validate identity values or enforce `GetPlatform()`. Custom handlers and direct service calls must implement their own authority restrictions.
 
 ## Pagination
 
@@ -260,9 +260,9 @@ The page request contract is:
 
 ```go
 type TimeRange struct {
-	Field string         `json:"field"`
-	Start json.Timestamp `json:"start"`
-	End   json.Timestamp `json:"end"`
+	Field string          `json:"field"`
+	Start *json.Timestamp `json:"start"`
+	End   *json.Timestamp `json:"end"`
 }
 
 type PagerDTO[T any] struct {
@@ -273,7 +273,7 @@ type PagerDTO[T any] struct {
 }
 ```
 
-Example request:
+Example request (timestamps shown in milliseconds; use the application's configured toolkit timestamp unit):
 
 ```json
 {
@@ -308,7 +308,7 @@ type Pager[T any] struct {
 }
 ```
 
-`number` must be at least 1. `size` must be between 1 and 2000.
+`number` must be at least 1 and `size` must be between 1 and 2000 for HTTP binding. Direct service calls do not automatically execute these binding checks. `MaxQuerySize()` is not a page-size clamp. The service supplies all response metadata and records.
 
 ## ID Types
 
@@ -362,12 +362,12 @@ Base routes use the standard `starter-gin` REST envelope.
 | --- | --- |
 | Invalid body, page, field, or path ID | Bad parameters. |
 | Single query has no record | Success with empty data. |
-| List query has no records | Success with `[]`, as returned by the service. |
+| List query has no records | Success; an empty slice encodes as `[]`, while a nil slice may encode as `null`. |
 | Modify or remove affects zero rows | Bad parameters. |
 | Business or persistence method returns an error | System exception pipeline. |
 | Required authority is absent | Unauthorized. |
 
-The service controls the returned list value. Generated services should return an empty non-nil slice when no list records exist.
+The service controls the returned list value and missing-record errors. A single result becomes success without data only when the service returns `nil, nil`; persistence not-found errors are forwarded. Save binding failures use the request panic pipeline, while other base JSON handlers return a bad-parameters response on binding errors. With the default starter-gin response resolver, error responses can use HTTP 200 with the error status in the REST body. Check that body status instead of relying only on the HTTP code.
 
 ## Starter Integration
 
@@ -416,7 +416,7 @@ if err != nil {
 Run tests from the module directory:
 
 ```bash
-GOMODCACHE=/Users/acexy/Repository/cache/golang go test ./...
+go test ./...
 ```
 
-The test suite uses `httptest` against the actual Gin engine and does not require a fixed listening port or external infrastructure.
+The test suite uses `httptest` against the actual Gin engine. Its lifecycle fixture also starts a listener on an ephemeral localhost port; no fixed port or external database is required.

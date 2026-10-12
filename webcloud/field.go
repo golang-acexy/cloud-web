@@ -24,7 +24,7 @@ func structFieldToColumn(field string) string {
 	return str.CamelToSnake(str.LowFirstChar(field))
 }
 
-// collectStructFieldNames 按 Go 字段提升规则展开匿名结构体，并返回有效字段名。
+// collectStructFieldNames collects exported promoted names and rejects same-depth name or column conflicts.
 func collectStructFieldNames(value any) ([]string, error) {
 	typ := reflect.TypeOf(value)
 	if typ == nil || typ.Kind() != reflect.Struct {
@@ -72,7 +72,7 @@ func collectStructFieldNames(value any) ([]string, error) {
 				}
 
 				column := structFieldToColumn(field.Name)
-				// 更浅层字段已经生效时，忽略被遮蔽的嵌入字段。
+				// Ignore embedded fields shadowed by a shallower name or column.
 				if _, exists := resolvedNames[field.Name]; exists {
 					continue
 				}

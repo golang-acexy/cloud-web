@@ -16,7 +16,7 @@ const (
 	modifyMode
 )
 
-// defaultForbiddenColumns 定义基础更新接口禁止修改的系统字段。
+// defaultForbiddenColumns excludes IDs and common creation/update columns, but not soft-delete columns.
 var defaultForbiddenColumns = []string{
 	"id",
 	"created_at",
@@ -28,28 +28,35 @@ var defaultForbiddenColumns = []string{
 	"updated_at",
 }
 
+// BaseRouter adapts a shared service to CRUD handlers with DTO field allowlists.
+// Construct it before serving requests; concurrent safety depends on the service and authority callback.
 type BaseRouter[ID IDType, S, M, Q, D any] struct {
 	baseBizService BaseBizService[ID, S, M, Q, D]
 
-	// 权限控制
 	authorityFetch     AuthorityFetch[ID]
 	authorityValidate  bool
 	authorityDataField AuthorityDataField
 
-	// 字段安全设置
-	modifyAllowedColumns []string // 允许自由更新的数据库字段
-	queryAllowedColumns  []string // 允许自由查询的数据库字段
+	modifyAllowedColumns []string
+	queryAllowedColumns  []string
 }
 
-// BaseRouterHandlers 定义基础路由注册所需的全部处理器。
-// 具体路由可通过嵌入 BaseRouter 继承默认实现，并按需重写同名方法。
+// BaseRouterHandlers supplies factories for the seven registered CRUD handlers.
+// Pass the concrete embedding router to dispatch overridden methods.
 type BaseRouterHandlers interface {
+	// Save creates a save handler.
 	Save() ginstarter.HandlerWrapper
+	// QueryByID creates a single-ID query handler.
 	QueryByID() ginstarter.HandlerWrapper
+	// QueryOne creates a single-result condition handler.
 	QueryOne() ginstarter.HandlerWrapper
+	// Query creates a list query handler.
 	Query() ginstarter.HandlerWrapper
+	// QueryPage creates a page query handler.
 	QueryPage() ginstarter.HandlerWrapper
+	// ModifyByID creates an ID update handler.
 	ModifyByID() ginstarter.HandlerWrapper
+	// RemoveByID creates an ID delete handler.
 	RemoveByID() ginstarter.HandlerWrapper
 }
 
@@ -59,9 +66,9 @@ func structNamesToColumns(structName []string) []string {
 	})
 }
 
-// NewBaseRouter 创建基础路由。
-// 查询和更新请求以 Map 形式向 Service 传递，以保留零值字段；允许字段由 Q、M 结构体定义。
-// S、M、Q 必须使用非指针结构体类型。
+// NewBaseRouter derives column allowlists from non-pointer Q and M structs.
+// It panics on invalid DTO kinds or ambiguous embedded fields. Tags do not define the allowlist.
+// Supply a non-nil service and a struct S for save binding; S and the service are not validated here.
 func NewBaseRouter[ID IDType, S, M, Q, D any](baseBizService BaseBizService[ID, S, M, Q, D]) *BaseRouter[ID, S, M, Q, D] {
 	var q Q
 	var m M
@@ -83,9 +90,9 @@ func NewBaseRouter[ID IDType, S, M, Q, D any](baseBizService BaseBizService[ID, 
 	}
 }
 
-// NewBaseRouterWithAuthority 创建基础路由 自动携带数据权限控制
-// authorityFetch 提供获取授权信息的接口
-// authorityDataField 分别定义权限字段对应的 Go 结构体字段名和数据库列名。
+// NewBaseRouterWithAuthority adds identity injection to the standard handlers.
+// It shares NewBaseRouter's panics; authority configuration is checked only when used.
+// Custom handlers and direct service calls must enforce authority themselves.
 func NewBaseRouterWithAuthority[ID IDType, S, M, Q, D any](baseBizService BaseBizService[ID, S, M, Q, D], authorityFetch AuthorityFetch[ID], authorityDataField AuthorityDataField) *BaseRouter[ID, S, M, Q, D] {
 	router := NewBaseRouter[ID, S, M, Q, D](baseBizService)
 	router.authorityFetch = authorityFetch
@@ -94,7 +101,6 @@ func NewBaseRouterWithAuthority[ID IDType, S, M, Q, D any](baseBizService BaseBi
 	return router
 }
 
-// convertJSONToMap 将 JSON 转换成数据库字段 Map，并检查请求字段是否允许。
 func (b *BaseRouter[ID, S, M, Q, D]) convertJSONToMap(request *ginstarter.Request, m mode) (map[string]any, error) {
 	var param map[string]any
 	if err := request.BindBodyJSON(&param); err != nil {
@@ -109,14 +115,12 @@ func (b *BaseRouter[ID, S, M, Q, D]) convertJSONToMap(request *ginstarter.Reques
 	return convertFieldsToColumns(param), nil
 }
 
-// convertFieldsToColumns 将客户端字段名统一转换为数据库列名。
 func convertFieldsToColumns(param map[string]any) map[string]any {
 	return coll.MapCollect(param, func(k string, v any) (string, any) {
 		return str.CamelToSnake(k), v
 	})
 }
 
-// checkField 安全检查
 func (b *BaseRouter[ID, S, M, Q, D]) checkField(param map[string]any, m mode) bool {
 	var matchRule []string
 	switch m {
@@ -135,7 +139,6 @@ func (b *BaseRouter[ID, S, M, Q, D]) checkField(param map[string]any, m mode) bo
 	return true
 }
 
-// normalizeTimeRanges 补全默认时间字段，并校验客户端传入的字段是否在白名单中。
 func (b *BaseRouter[ID, S, M, Q, D]) normalizeTimeRanges(timeRanges []TimeRange) ([]TimeRange, bool) {
 	result, err := normalizeTimeRanges(
 		timeRanges,
@@ -149,7 +152,6 @@ func (b *BaseRouter[ID, S, M, Q, D]) normalizeTimeRanges(timeRanges []TimeRange)
 	return result, true
 }
 
-// setAuthorityLimitStruct 向请求 DTO 强制写入数据权限字段。
 func (b *BaseRouter[ID, S, M, Q, D]) setAuthorityLimitStruct(request *ginstarter.Request, paramPtr any) error {
 	if b.authorityValidate {
 		if b.authorityDataField.StructField == "" {
@@ -167,36 +169,38 @@ func (b *BaseRouter[ID, S, M, Q, D]) setAuthorityLimitStruct(request *ginstarter
 	return nil
 }
 
-// setAuthorityLimitMap 向数据库条件强制写入数据权限字段。
 func (b *BaseRouter[ID, S, M, Q, D]) setAuthorityLimitMap(request *ginstarter.Request, param map[string]any) error {
 	if b.authorityValidate {
 		if b.authorityDataField.Column == "" {
 			return ErrAuthorityDataColumnRequired
 		}
 		authority := b.GetAuthorityData(request)
+		// Apply authority after client key normalization so client values cannot override it.
 		param[b.authorityDataField.Column] = authority.GetIdentityID()
 	}
 	return nil
 }
 
-// RegisterBaseHandlers 注册基础路由，并通过 handlers 分派默认或重写的处理器。
+// RegisterBaseHandlers registers seven relative CRUD routes with JSON-only body routes.
+// Call before serving requests with non-nil router and handlers; overrides own their validation.
 func (b *BaseRouter[ID, S, M, Q, D]) RegisterBaseHandlers(router *ginstarter.RouterWrapper, handlers BaseRouterHandlers) {
 	router.POST1("save", []string{gin.MIMEJSON}, handlers.Save())
-	// 通过主键查询单条数据
+
 	router.GET("by-id/:id", handlers.QueryByID())
-	// 通过条件查询单条数据
+
 	router.POST1("query-one", []string{gin.MIMEJSON}, handlers.QueryOne())
-	// 通过条件查询多条数据
+
 	router.POST1("query", []string{gin.MIMEJSON}, handlers.Query())
-	// 通过条件分页查询
+
 	router.POST1("query-by-page", []string{gin.MIMEJSON}, handlers.QueryPage())
-	// 通过主键更新数据
+
 	router.PUT1("by-id/:id", []string{gin.MIMEJSON}, handlers.ModifyByID())
-	// 通过主键删除数据
+
 	router.DELETE("by-id/:id", handlers.RemoveByID())
 }
 
-// GetAuthorityData 获取当前请求的必需认证信息。
+// GetAuthorityData requires a callback and non-nil authority; otherwise it raises a request panic.
+// A typed nil implementation is not detected, and identity values are not validated.
 func (b *BaseRouter[ID, S, M, Q, D]) GetAuthorityData(request *ginstarter.Request) Authority[ID] {
 	if b.authorityFetch == nil {
 		request.Panic(ginstarter.StatusCodeException, ErrAuthorityFetchRequired)
@@ -208,7 +212,7 @@ func (b *BaseRouter[ID, S, M, Q, D]) GetAuthorityData(request *ginstarter.Reques
 	return result
 }
 
-// GetOptionalAuthorityData 获取当前请求的可选认证信息。
+// GetOptionalAuthorityData allows nil authority but raises a request panic if no callback is configured.
 func (b *BaseRouter[ID, S, M, Q, D]) GetOptionalAuthorityData(request *ginstarter.Request) Authority[ID] {
 	if b.authorityFetch == nil {
 		request.Panic(ginstarter.StatusCodeException, ErrAuthorityFetchRequired)
@@ -216,8 +220,9 @@ func (b *BaseRouter[ID, S, M, Q, D]) GetOptionalAuthorityData(request *ginstarte
 	return b.authorityFetch(request)
 }
 
-// 基础 CRUD
-
+// Save binds and validates S, then injects authority and calls SaveWithoutZeroFields.
+// Binding failures panic through the request error pipeline; validation is not repeated after injection.
+// Service failures log the bound DTO; override this handler when payloads require redaction.
 func (b *BaseRouter[ID, S, M, Q, D]) Save() ginstarter.HandlerWrapper {
 	return func(request *ginstarter.Request) (ginstarter.Response, error) {
 		var param S
@@ -234,6 +239,8 @@ func (b *BaseRouter[ID, S, M, Q, D]) Save() ginstarter.HandlerWrapper {
 	}
 }
 
+// QueryByID parses the path ID and queries with authority conditions.
+// Invalid IDs yield bad parameters; a nil result without error yields success without data.
 func (b *BaseRouter[ID, S, M, Q, D]) QueryByID() ginstarter.HandlerWrapper {
 	return func(request *ginstarter.Request) (ginstarter.Response, error) {
 		id, err := ConvertStringToID[ID](request.GetPathParam("id"))
@@ -255,6 +262,8 @@ func (b *BaseRouter[ID, S, M, Q, D]) QueryByID() ginstarter.HandlerWrapper {
 	}
 }
 
+// Query accepts a nonempty JSON map with allowed Q columns and injects authority.
+// Values are not validated against Q; the service owns list limits and result normalization.
 func (b *BaseRouter[ID, S, M, Q, D]) Query() ginstarter.HandlerWrapper {
 	return func(request *ginstarter.Request) (ginstarter.Response, error) {
 		param, err := b.convertJSONToMap(request, queryMode)
@@ -272,6 +281,8 @@ func (b *BaseRouter[ID, S, M, Q, D]) Query() ginstarter.HandlerWrapper {
 	}
 }
 
+// QueryOne validates nonempty condition keys and injects authority before querying.
+// A nil result without error yields success without data; Q field validation is not applied.
 func (b *BaseRouter[ID, S, M, Q, D]) QueryOne() ginstarter.HandlerWrapper {
 	return func(request *ginstarter.Request) (ginstarter.Response, error) {
 		param, err := b.convertJSONToMap(request, queryMode)
@@ -292,6 +303,8 @@ func (b *BaseRouter[ID, S, M, Q, D]) QueryOne() ginstarter.HandlerWrapper {
 	}
 }
 
+// QueryPage validates HTTP page bounds, condition keys, and allowed time intervals.
+// Conditions may be omitted; the service receives authority predicates and owns the returned page.
 func (b *BaseRouter[ID, S, M, Q, D]) QueryPage() ginstarter.HandlerWrapper {
 	return func(request *ginstarter.Request) (ginstarter.Response, error) {
 		var requestParam PagerDTO[map[string]any]
@@ -308,7 +321,7 @@ func (b *BaseRouter[ID, S, M, Q, D]) QueryPage() ginstarter.HandlerWrapper {
 			}
 			param = convertFieldsToColumns(param)
 		}
-		// 权限条件必须最后写入，确保客户端传值无法覆盖系统权限。
+
 		if err := b.setAuthorityLimitMap(request, param); err != nil {
 			return nil, err
 		}
@@ -329,6 +342,9 @@ func (b *BaseRouter[ID, S, M, Q, D]) QueryPage() ginstarter.HandlerWrapper {
 	}
 }
 
+// ModifyByID accepts nonempty allowed M column assignments, preserving zero and null values.
+// It enforces authority in both conditions and assignments; zero affected rows yield bad parameters.
+// M field types and binding tags are not checked.
 func (b *BaseRouter[ID, S, M, Q, D]) ModifyByID() ginstarter.HandlerWrapper {
 	return func(request *ginstarter.Request) (ginstarter.Response, error) {
 		id, err := ConvertStringToID[ID](request.GetPathParam("id"))
@@ -350,8 +366,9 @@ func (b *BaseRouter[ID, S, M, Q, D]) ModifyByID() ginstarter.HandlerWrapper {
 		if err := b.setAuthorityLimitMap(request, param); err != nil {
 			return nil, err
 		}
-		// 权限字段由系统强制写入，客户端无法修改为其他身份。
+
 		if b.authorityValidate {
+			// Enforce the same identity in both the predicate and the assignments.
 			update[b.authorityDataField.Column] = param[b.authorityDataField.Column]
 		}
 		row, err := b.baseBizService.BaseModifyByID(update, param)
@@ -365,6 +382,8 @@ func (b *BaseRouter[ID, S, M, Q, D]) ModifyByID() ginstarter.HandlerWrapper {
 	}
 }
 
+// RemoveByID parses the path ID and deletes with authority conditions.
+// Nonpositive affected counts yield bad parameters; service errors are forwarded.
 func (b *BaseRouter[ID, S, M, Q, D]) RemoveByID() ginstarter.HandlerWrapper {
 	return func(request *ginstarter.Request) (ginstarter.Response, error) {
 		id, err := ConvertStringToID[ID](request.GetPathParam("id"))
@@ -386,19 +405,21 @@ func (b *BaseRouter[ID, S, M, Q, D]) RemoveByID() ginstarter.HandlerWrapper {
 	}
 }
 
-// SimpleRouter 简单路由，不含数据库结构相关的方法
+// SimpleRouter exposes identity lookup without automatic route or persistence protection.
 type SimpleRouter[ID IDType] struct {
 	authorityFetch AuthorityFetch[ID]
 }
 
-// NewSimpleRouter 创建一个简单路由 该路由器仅含有快捷获取当前认证信息
+// NewSimpleRouter stores a callback that must support concurrent requests.
+// A nil callback is accepted here but panics through the request pipeline when used.
 func NewSimpleRouter[ID IDType](authorityFetch AuthorityFetch[ID]) *SimpleRouter[ID] {
 	return &SimpleRouter[ID]{
 		authorityFetch: authorityFetch,
 	}
 }
 
-// GetAuthorityData 获取当前请求的必需认证信息。
+// GetAuthorityData requires a callback and non-nil authority; otherwise it raises a request panic.
+// A typed nil implementation is not detected, and identity values are not validated.
 func (s *SimpleRouter[ID]) GetAuthorityData(request *ginstarter.Request) Authority[ID] {
 	if s.authorityFetch == nil {
 		request.Panic(ginstarter.StatusCodeException, ErrAuthorityFetchRequired)
@@ -410,7 +431,7 @@ func (s *SimpleRouter[ID]) GetAuthorityData(request *ginstarter.Request) Authori
 	return result
 }
 
-// GetOptionalAuthorityData 获取当前请求的可选认证信息。
+// GetOptionalAuthorityData allows nil authority but raises a request panic if no callback is configured.
 func (s *SimpleRouter[ID]) GetOptionalAuthorityData(request *ginstarter.Request) Authority[ID] {
 	if s.authorityFetch == nil {
 		request.Panic(ginstarter.StatusCodeException, ErrAuthorityFetchRequired)

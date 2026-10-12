@@ -8,7 +8,7 @@ import (
 	"github.com/golang-acexy/cloud-database/databasecloud/rds"
 )
 
-// normalizeTimeRanges 补全默认时间字段，并统一校验时间字段白名单和查询范围。
+// normalizeTimeRanges fills the default field and validates allowed names and interval bounds.
 func normalizeTimeRanges(timeRanges []TimeRange, allowedFields []string, defaultTimeRangeField string) ([]TimeRange, error) {
 	if len(timeRanges) == 0 {
 		return nil, nil
@@ -43,7 +43,9 @@ func normalizeTimeRanges(timeRanges []TimeRange, allowedFields []string, default
 	return result, nil
 }
 
-// ConvertTimeRanges 校验时间字段白名单，并转换为 RDS 查询参数。
+// ConvertTimeRanges validates names and bounds and returns independent RDS time pointers.
+// At most one range may use the default field; invalid input returns ErrBadRequestParameters.
+// Empty input returns an empty non-nil slice; input values are not modified.
 func ConvertTimeRanges(timeRanges []TimeRange, allowedFields []string, defaultTimeRangeField string) ([]rds.TimeRange, error) {
 	normalized, err := normalizeTimeRanges(timeRanges, allowedFields, defaultTimeRangeField)
 	if err != nil {

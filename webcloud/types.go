@@ -8,54 +8,72 @@ import (
 	"github.com/golang-acexy/starter-gin/ginstarter"
 )
 
+// Platform identifies an application-defined authority domain; routers do not enforce it.
 type Platform string
 
-// IDType 主键类型
+// IDType accepts supported integer and string underlying types, including named types.
 type IDType interface {
 	~int | ~uint | ~int32 | ~uint32 | ~int64 | ~uint64 | ~string
 }
 
+// Authority supplies request identity; return a non-nil implementation for protected operations.
 type Authority[ID IDType] interface {
-	// GetIdentityID 获取唯一标识
+
+	// GetIdentityID returns the identity injected into protected operations; zero values are not rejected.
 	GetIdentityID() ID
-	// GetPlatform 所属平台标识
+
+	// GetPlatform returns application metadata; base routers do not consult it.
 	GetPlatform() Platform
 }
 
-// AuthorityFetch 获取权限信息
+// AuthorityFetch resolves identity per request; nil means unauthenticated. Implementations must support concurrent requests.
 type AuthorityFetch[ID IDType] func(request *ginstarter.Request) Authority[ID]
 
-// AuthorityDataField 定义数据权限字段在 Go 结构体和数据库中的名称。
-// StructField 用于向请求 DTO 注入权限值，Column 用于构造数据库条件。
+// AuthorityDataField maps the identity to a save DTO field and a persistence condition column.
 type AuthorityDataField struct {
+	// StructField names a writable save DTO field; use the identity type to avoid lossy conversion.
 	StructField string
-	Column      string
+	// Column is used verbatim for persistence conditions and protected updates.
+	// Use a distinct ownership column when overwriting the resource ID would be incorrect.
+	Column string
 }
 
-// TimeRange 定义某个白名单时间字段的左闭右开查询范围。
+// TimeRange describes a left-closed, right-open interval validated by the router or ConvertTimeRanges.
 type TimeRange struct {
-	Field string          `json:"field"` // 支持驼峰或下划线字段名，字段必须位于时间范围白名单中
+	// Field is an allowed camelCase or snake_case name; empty selects the default field.
+	Field string `json:"field"`
+	// Start is the inclusive lower bound; nil leaves it unbounded.
 	Start *json.Timestamp `json:"start"`
-	End   *json.Timestamp `json:"end"`
+	// End is the exclusive upper bound; nil leaves it unbounded.
+	End *json.Timestamp `json:"end"`
 }
 
-// PagerDTO 分页查询信息
+// PagerDTO holds page inputs; binding tags apply to HTTP requests, not direct service calls.
 type PagerDTO[T any] struct {
-	Size       int         `json:"size" form:"size"  binding:"required,gte=1,lte=2000"` // 请求每页记录数
-	Number     int         `json:"number" form:"number"  binding:"required,gte=1"`      // 请求页码 从1开始
-	Condition  T           `json:"condition"`
+	// Size is the requested page size; HTTP input must be between 1 and 2000.
+	Size int `json:"size" form:"size"  binding:"required,gte=1,lte=2000"`
+	// Number is the one-based page number.
+	Number int `json:"number" form:"number"  binding:"required,gte=1"`
+	// Condition holds service-specific filters; HTTP map conditions may be omitted.
+	Condition T `json:"condition"`
+	// TimeRanges holds optional intervals; at most one may omit its field.
 	TimeRanges []TimeRange `json:"timeRanges"`
 }
 
-// Pager 分页响应信息
+// Pager holds service-produced page output; the router does not normalize records or metadata.
 type Pager[T any] struct {
-	Records []*T  `json:"records"` // 响应数据
-	Total   int64 `json:"total"`   // 响应总记录数
-	Size    int   `json:"size"`    // 请求每页记录数
-	Number  int   `json:"number"`
+	// Records contains the returned records; nil and empty slices retain their encoding semantics.
+	Records []*T `json:"records"`
+	// Total is the service-reported total matching count.
+	Total int64 `json:"total"`
+	// Size is the service-reported page size; the router does not clamp it.
+	Size int `json:"size"`
+	// Number is the one-based page number.
+	Number int `json:"number"`
 }
 
-// ConvertStringToID 将字符串转换为实际主键类型。
+// ConvertStringToID parses decimal integers with overflow checks or preserves strings verbatim.
+// It accepts zero, signed negative IDs, and empty strings; domain validation belongs to the caller.
 func ConvertStringToID[ID IDType](value string) (ID, error) {
 	var id ID
 	targetType := reflect.TypeOf(id)
@@ -81,95 +99,98 @@ func ConvertStringToID[ID IDType](value string) (ID, error) {
 	return parsedValue.Interface().(ID), nil
 }
 
+// BaseBizService defines application-owned persistence operations for shared HTTP routers.
+// Implementations must support concurrent requests, preserve authority conditions, and return persistence errors.
+// List limits, sorting, missing-result conventions, transactions, and cancellation are implementation responsibilities.
 type BaseBizService[ID IDType, S, M, Q, D any] interface {
 
-	// MaxQuerySize 非分页查询允许返回的最大记录数。
+	// MaxQuerySize reports the service list limit; the router does not enforce it.
 	MaxQuerySize() int
 
-	// DefaultOrderBy 返回默认排序表达式，具体格式由持久化实现解释。
+	// DefaultOrderBy reports a persistence-specific default ordering for the service to apply.
 	DefaultOrderBy() string
 
-	// DefaultTimeRangeField 默认查询时间范围字段。
+	// DefaultTimeRangeField supplies the field for one unnamed time range; it must also be allowed.
 	DefaultTimeRangeField() string
 
-	// AllowedTimeRangeFields 允许使用的时间范围字段。
+	// AllowedTimeRangeFields lists permitted time fields, normalized to snake case before comparison.
 	AllowedTimeRangeFields() []string
 
-	// Save 保存数据
+	// Save persists a save DTO and returns its ID; zero-value behavior depends on the implementation.
 	Save(save *S) (ID, error)
 
-	// SaveWithoutZeroFields 保存数据，忽略零值字段。
+	// SaveWithoutZeroFields persists a save DTO while omitting zero fields; used by the base save route.
 	SaveWithoutZeroFields(save *S) (ID, error)
 
-	// SaveBatch 批量保存数据。
+	// SaveBatch persists save DTOs; atomicity and partial-failure behavior depend on the implementation.
 	SaveBatch(saves []*S) ([]ID, error)
 
-	// BaseQueryByID 使用数据库字段条件查询主键记录。
+	// BaseQueryByID queries by column conditions including ID and authority; return nil, nil for a no-data HTTP response.
 	BaseQueryByID(condition map[string]any) (*D, error)
 
-	// BaseQueryOne 使用数据库字段条件查询一条记录。
+	// BaseQueryOne queries one result by column conditions; return nil, nil for a no-data HTTP response.
 	BaseQueryOne(condition map[string]any) (*D, error)
 
-	// BaseQuery 使用数据库字段条件查询多条记录。
+	// BaseQuery queries a list by column conditions; the service owns limits, ordering, and nil-versus-empty results.
 	BaseQuery(condition map[string]any) ([]*D, error)
 
-	// BaseQueryPage 使用数据库字段条件分页查询。
+	// BaseQueryPage queries a page using column conditions and normalized time ranges; preserve all authority predicates.
 	BaseQueryPage(query PagerDTO[map[string]any]) (Pager[D], error)
 
-	// BaseModifyByID 通过主键修改数据
+	// BaseModifyByID updates by ID and authority conditions; zero affected rows become a bad-parameters response.
 	BaseModifyByID(update, condition map[string]any) (int64, error)
 
-	// BaseRemoveByID 通过主键删除数据
+	// BaseRemoveByID deletes by ID and authority conditions; nonpositive affected rows become a bad-parameters response.
 	BaseRemoveByID(condition map[string]any) (int64, error)
 
-	// QueryByID 通过主键查询。
+	// QueryByID queries one ID using the implementation's missing-result convention.
 	QueryByID(id ID) (*D, error)
 
-	// QueryByIDs 通过多个主键查询。
+	// QueryByIDs queries multiple IDs; ordering and empty-input behavior depend on the implementation.
 	QueryByIDs(ids []ID) ([]*D, error)
 
-	// ExistsByID 判断指定主键的数据是否存在。
+	// ExistsByID checks an ID and returns persistence failures separately from absence.
 	ExistsByID(id ID) (bool, error)
 
-	// QueryOneByCond 通过条件查询一条数据。
+	// QueryOneByCond queries one result using typed conditions.
 	QueryOneByCond(condition Q) (*D, error)
 
-	// QueryByCond 通过条件查询多条数据。
+	// QueryByCond queries a list using typed conditions and service-owned limits.
 	QueryByCond(condition Q) ([]*D, error)
 
-	// CountByCond 统计符合条件的数据数量。
+	// CountByCond counts results matching typed conditions.
 	CountByCond(condition Q) (int64, error)
 
-	// CountByMap 根据数据库字段条件统计数据，支持显式零值条件。
+	// CountByMap counts results using column conditions, including explicit zero values.
 	CountByMap(condition map[string]any) (int64, error)
 
-	// QueryPage 分页查询。
+	// QueryPage queries typed page inputs; direct calls must validate their own page limits.
 	QueryPage(pager PagerDTO[Q]) (Pager[D], error)
 
-	// ModifyByID 根据主键修改数据。
+	// ModifyByID updates an ID using a modify DTO; zero-value behavior depends on the implementation.
 	ModifyByID(id ID, updated *M) (int64, error)
 
-	// ModifyByIDWithoutZeroFields 根据主键修改数据，忽略零值字段。
+	// ModifyByIDWithoutZeroFields updates an ID while omitting zero-valued DTO fields.
 	ModifyByIDWithoutZeroFields(id ID, updated *M) (int64, error)
 
-	// ModifyByIDWithMap 根据主键使用 Map 修改数据。
+	// ModifyByIDWithMap updates an ID using column assignments, including explicit zero values.
 	ModifyByIDWithMap(id ID, updated map[string]any) (int64, error)
 
-	// ModifyByCond 根据类型化条件修改数据。
+	// ModifyByCond updates matching typed conditions using a modify DTO.
 	ModifyByCond(condition Q, updated *M) (int64, error)
 
-	// ModifyByMap 根据数据库字段条件和字段值修改数据，支持显式零值。
+	// ModifyByMap updates column conditions with explicit column assignments, including zero values.
 	ModifyByMap(updated, condition map[string]any) (int64, error)
 
-	// RemoveByID 根据主键删除数据。
+	// RemoveByID deletes one ID and returns the persistence-reported affected count.
 	RemoveByID(id ID) (int64, error)
 
-	// RemoveByIDs 根据多个主键删除数据。
+	// RemoveByIDs deletes multiple IDs; empty-input behavior depends on the implementation.
 	RemoveByIDs(ids []ID) (int64, error)
 
-	// RemoveByCond 根据查询条件删除数据。
+	// RemoveByCond deletes matching typed conditions; the implementation owns empty-filter safeguards.
 	RemoveByCond(condition Q) (int64, error)
 
-	// RemoveByMap 根据数据库字段条件删除数据。
+	// RemoveByMap deletes matching column conditions; the implementation owns empty-filter safeguards.
 	RemoveByMap(condition map[string]any) (int64, error)
 }

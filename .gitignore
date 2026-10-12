@@ -28,3 +28,6 @@ go.work.sum
 .idea
 .DS_Store
 *.log
+
+# Local link to workspace internal documentation
+/docs

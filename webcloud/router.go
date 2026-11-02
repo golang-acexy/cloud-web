@@ -37,8 +37,8 @@ type BaseRouter[ID IDType, S, M, Q, D any] struct {
 	authorityValidate  bool
 	authorityDataField AuthorityDataField
 
-	modifyAllowedColumns []string
-	queryAllowedColumns  []string
+	modifyAllowedColumns map[string]struct{}
+	queryAllowedColumns  map[string]struct{}
 }
 
 // BaseRouterHandlers supplies factories for the seven registered CRUD handlers.
@@ -60,12 +60,6 @@ type BaseRouterHandlers interface {
 	RemoveByID() ginstarter.HandlerWrapper
 }
 
-func structNamesToColumns(structName []string) []string {
-	return coll.SliceCollect(structName, func(field string) string {
-		return structFieldToColumn(field)
-	})
-}
-
 // NewBaseRouter derives column allowlists from non-pointer Q and M structs.
 // It panics on invalid DTO kinds or ambiguous embedded fields. Tags do not define the allowlist.
 // Supply a non-nil service and a struct S for save binding; S and the service are not validated here.
@@ -83,10 +77,13 @@ func NewBaseRouter[ID IDType, S, M, Q, D any](baseBizService BaseBizService[ID, 
 	}
 	return &BaseRouter[ID, S, M, Q, D]{
 		baseBizService: baseBizService,
-		modifyAllowedColumns: coll.SliceFilter(structNamesToColumns(modifyFieldNames), func(field string) bool {
-			return !coll.SliceContains(defaultForbiddenColumns, field)
+		modifyAllowedColumns: coll.SliceFilterToMap(modifyFieldNames, func(field string) (string, struct{}, bool) {
+			column := structFieldToColumn(field)
+			return column, struct{}{}, !coll.SliceContains(defaultForbiddenColumns, column)
 		}),
-		queryAllowedColumns: structNamesToColumns(queryFieldNames),
+		queryAllowedColumns: coll.SliceFilterToMap(queryFieldNames, func(field string) (string, struct{}, bool) {
+			return structFieldToColumn(field), struct{}{}, true
+		}),
 	}
 }
 
@@ -109,34 +106,32 @@ func (b *BaseRouter[ID, S, M, Q, D]) convertJSONToMap(request *ginstarter.Reques
 	if len(param) == 0 {
 		return nil, ErrBadRequestParameters
 	}
-	if !b.checkField(param, m) {
-		return nil, ErrBadRequestParameters
-	}
-	return convertFieldsToColumns(param), nil
+	return b.convertFieldsToColumns(param, m)
 }
 
-func convertFieldsToColumns(param map[string]any) map[string]any {
-	return coll.MapCollect(param, func(k string, v any) (string, any) {
-		return str.CamelToSnake(k), v
-	})
-}
-
-func (b *BaseRouter[ID, S, M, Q, D]) checkField(param map[string]any, m mode) bool {
-	var matchRule []string
+// convertFieldsToColumns borrows values and validates normalized keys against immutable router metadata.
+func (b *BaseRouter[ID, S, M, Q, D]) convertFieldsToColumns(param map[string]any, m mode) (map[string]any, error) {
+	var allowed map[string]struct{}
 	switch m {
 	case modifyMode:
-		matchRule = b.modifyAllowedColumns
+		allowed = b.modifyAllowedColumns
 	case queryMode:
-		matchRule = b.queryAllowedColumns
+		allowed = b.queryAllowedColumns
 	}
-	input := coll.MapFilterToSlice(param, func(k string, v any) (string, bool) {
-		return str.CamelToSnake(k), true
-	})
-	if !coll.SliceIsSubset(input, matchRule) {
-		logger.Logrus().Warningln("some request field not allowed, all request field : ", input)
-		return false
+	result := make(map[string]any, len(param))
+	for key, value := range param {
+		column := str.CamelToSnake(key)
+		if _, ok := allowed[column]; !ok {
+			// Preserve the complete normalized field list in rejection logs without allocating it on success.
+			input := coll.MapFilterToSlice(param, func(k string, v any) (string, bool) {
+				return str.CamelToSnake(k), true
+			})
+			logger.Logrus().Warningln("some request field not allowed, all request field : ", input)
+			return nil, ErrBadRequestParameters
+		}
+		result[column] = value
 	}
-	return true
+	return result, nil
 }
 
 func (b *BaseRouter[ID, S, M, Q, D]) normalizeTimeRanges(timeRanges []TimeRange) ([]TimeRange, bool) {
@@ -316,10 +311,11 @@ func (b *BaseRouter[ID, S, M, Q, D]) QueryPage() ginstarter.HandlerWrapper {
 			param = make(map[string]any)
 		}
 		if len(param) > 0 {
-			if !b.checkField(param, queryMode) {
+			var err error
+			param, err = b.convertFieldsToColumns(param, queryMode)
+			if err != nil {
 				return ginstarter.RespRestBadParameters(), nil
 			}
-			param = convertFieldsToColumns(param)
 		}
 
 		if err := b.setAuthorityLimitMap(request, param); err != nil {
@@ -358,10 +354,10 @@ func (b *BaseRouter[ID, S, M, Q, D]) ModifyByID() ginstarter.HandlerWrapper {
 		if len(update) == 0 {
 			return ginstarter.RespRestBadParameters(), nil
 		}
-		if !b.checkField(update, modifyMode) {
+		update, err = b.convertFieldsToColumns(update, modifyMode)
+		if err != nil {
 			return ginstarter.RespRestBadParameters(), nil
 		}
-		update = convertFieldsToColumns(update)
 		param := map[string]any{"id": id}
 		if err := b.setAuthorityLimitMap(request, param); err != nil {
 			return nil, err
